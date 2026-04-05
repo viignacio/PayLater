@@ -3,50 +3,51 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { X, Plus, User, Trash2, Eye } from "lucide-react"
-
-
-interface User {
-  id: string
-  name: string
-  avatar?: string
-  qrCode?: string
-  totalOwed: number
-  totalOwing: number
-  createdAt: string
-}
+import { X, User, Trash2, Eye } from "lucide-react"
 
 interface ManageUsersModalProps {
   isOpen: boolean
   onClose: () => void
-  users: User[] // All users in the system
-  tripMembers: User[] // Current trip members
-  onAddUser: (userId: string) => void
+  tripId: string
+  tripMembers: Array<{ id: string; name: string; avatar?: string | null; role: string }>
   onRemoveUser: (userId: string) => void
-  onViewProfile: (user: User) => void
+  onViewProfile: (user: { id: string; name: string; avatar?: string | null }) => void
 }
 
-export function ManageUsersModal({ 
-  isOpen, 
-  onClose, 
-  users, 
+export function ManageUsersModal({
+  isOpen,
+  onClose,
+  tripId,
   tripMembers,
-  onAddUser, 
   onRemoveUser,
   onViewProfile
 }: ManageUsersModalProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [inviteError, setInviteError] = useState('')
+  const [isSendingInvite, setIsSendingInvite] = useState(false)
 
-  const handleAddUser = async (userId: string) => {
-    setIsLoading(true)
-    try {
-      await onAddUser(userId)
-    } catch (error) {
-      console.error("Error adding user:", error)
-    } finally {
-      setIsLoading(false)
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inviteEmail.trim()) return
+    setIsSendingInvite(true)
+    setInviteError('')
+    setInviteUrl(null)
+
+    const res = await fetch('/api/invites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tripId, email: inviteEmail.trim() }),
+    })
+    const data = await res.json()
+
+    if (data.error) {
+      setInviteError(data.error)
+    } else {
+      setInviteUrl(data.inviteUrl)
+      setInviteEmail('')
     }
+    setIsSendingInvite(false)
   }
 
   const handleRemoveUser = async (userId: string) => {
@@ -57,33 +58,25 @@ export function ManageUsersModal({
     }
   }
 
-  // Filter users that are not already trip members
-  const availableUsers = users.filter(user => 
-    !tripMembers.some(member => member.id === user.id) &&
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-
-
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       // Store the current scroll position
       const scrollY = window.scrollY
-      
+
       // Prevent scrolling on the body
       document.body.style.position = 'fixed'
       document.body.style.top = `-${scrollY}px`
       document.body.style.width = '100%'
       document.body.style.overflow = 'hidden'
-      
+
       return () => {
         // Restore scrolling when modal closes
         document.body.style.position = ''
         document.body.style.top = ''
         document.body.style.width = ''
         document.body.style.overflow = ''
-        
+
         // Restore scroll position
         window.scrollTo(0, scrollY)
       }
@@ -97,7 +90,7 @@ export function ManageUsersModal({
       <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm sm:max-w-md transform transition-all duration-300 scale-100 max-h-[80vh] flex flex-col">
         {/* Empty header space - 16px on mobile, 32px on desktop */}
         <div className="h-4 sm:h-8 flex-shrink-0"></div>
-        
+
         {/* Scrollable content area */}
         <div className="flex-1 overflow-y-auto modal-scroll px-4 sm:px-8 min-h-0">
           {/* Header */}
@@ -119,75 +112,48 @@ export function ManageUsersModal({
           </div>
 
           <div className="pt-2 sm:pt-3">
-          {/* Search Users */}
+          {/* Invite by Email */}
           <div className="mb-4 sm:mb-6">
-            <Input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search users to add..."
-              className="w-full"
-            />
-          </div>
-
-          {/* Available Users to Add */}
-          {availableUsers.length > 0 && (
-            <div className="space-y-3 mb-6">
-              <h3 className="text-sm font-medium text-gray-700">
-                Available Users ({availableUsers.length})
-              </h3>
-              <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
-                {availableUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between p-3 bg-green-50/50 rounded-lg sm:rounded-xl border border-green-200/50"
+            <form onSubmit={handleSendInvite} className="space-y-3">
+              <Input
+                type="email"
+                label="Invite by email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="friend@example.com"
+                required
+              />
+              {inviteError && <p className="text-sm text-red-600">{inviteError}</p>}
+              {inviteUrl && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
+                  <p className="text-sm text-green-700 font-medium">Invite link created!</p>
+                  <p className="text-xs text-green-600 break-all">{inviteUrl}</p>
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-600 underline"
+                    onClick={() => navigator.clipboard.writeText(inviteUrl)}
                   >
-                    <div className="flex items-center min-w-0 flex-1">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
-                        <User className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-gray-900 font-medium text-sm sm:text-base truncate block">{user.name}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-1 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onViewProfile(user)}
-                        className="text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 h-7 w-7 sm:h-8 sm:w-8"
-                        title="View Profile"
-                      >
-                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleAddUser(user.id)}
-                        disabled={isLoading}
-                        className="text-gray-400 hover:text-green-500 hover:bg-green-50 h-7 w-7 sm:h-8 sm:w-8"
-                        title="Add to Trip"
-                      >
-                        <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                    Copy link
+                  </button>
+                </div>
+              )}
+              <Button type="submit" isLoading={isSendingInvite} disabled={!inviteEmail.trim()}>
+                Send Invite
+              </Button>
+            </form>
+          </div>
 
           {/* Current Trip Members */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-700 mb-3">
               Trip Members ({tripMembers.length})
             </h3>
-            
+
             {tripMembers.length === 0 ? (
               <div className="text-center py-6 sm:py-8">
                 <User className="h-10 w-10 sm:h-12 sm:w-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 text-sm">No members added yet</p>
-                <p className="text-gray-400 text-xs mt-1">Add users from the list above</p>
+                <p className="text-gray-400 text-xs mt-1">Invite people using the form above</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">

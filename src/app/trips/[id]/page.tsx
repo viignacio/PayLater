@@ -256,29 +256,6 @@ export default function TripDetailPage() {
     }
   }
 
-  const handleAddUser = async (userId: string) => {
-    try {
-      // Add user to trip
-      const response = await fetch(`/api/trips/${tripId}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to add user to trip')
-      }
-
-      // Reload trip data to get updated members
-      loadTripData()
-    } catch (error) {
-      console.error("Error adding user to trip:", error)
-      alert("Failed to add user to trip. Please try again.")
-    }
-  }
-
   const handleRemoveUser = async (userId: string) => {
     try {
       const response = await fetch(`/api/trips/${tripId}/members/${userId}`, {
@@ -659,11 +636,12 @@ export default function TripDetailPage() {
       <ManageUsersModal
         isOpen={isManageUsersModalOpen}
         onClose={() => setIsManageUsersModalOpen(false)}
-        users={users}
-        tripMembers={users.filter(user => 
-          trip?.members.some(member => member.user.id === user.id)
-        )}
-        onAddUser={handleAddUser}
+        tripId={tripId}
+        tripMembers={(trip?.members ?? []).map(member => ({
+          id: member.user.id,
+          name: member.user.name,
+          role: member.role,
+        }))}
         onRemoveUser={handleRemoveUser}
         onViewProfile={handleViewProfile}
       />
