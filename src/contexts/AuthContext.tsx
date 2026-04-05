@@ -1,12 +1,16 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import type { User } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
+import type { Profile } from '@/lib/transformers'
+import { toProfile } from '@/lib/transformers'
 
 interface AuthContextType {
-  isAuthenticated: boolean
+  user: User | null
+  profile: Profile | null
   isLoading: boolean
-  login: (password: string) => Promise<boolean>
-  logout: () => void
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -19,84 +23,51 @@ export function useAuth() {
   return context
 }
 
-interface AuthProviderProps {
-  children: React.ReactNode
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
 
-  // Check for existing authentication on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/verify', {
-          method: 'GET',
-          credentials: 'include'
-        })
-        
-        if (response.ok) {
-          setIsAuthenticated(true)
-        } else {
-          setIsAuthenticated(false)
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        setIsAuthenticated(false)
-      } finally {
+    // Get initial session
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+      if (user) fetchProfile(user.id)
+      else setIsLoading(false)
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      if (currentUser) fetchProfile(currentUser.id)
+      else {
+        setProfile(null)
         setIsLoading(false)
       }
-    }
+    })
 
-    checkAuth()
+    return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const login = async (password: string): Promise<boolean> => {
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ password }),
-      })
-
-      if (response.ok) {
-        setIsAuthenticated(true)
-        return true
-      } else {
-        return false
-      }
-    } catch (error) {
-      console.error('Login failed:', error)
-      return false
-    }
+  async function fetchProfile(userId: string) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    setProfile(data ? toProfile(data) : null)
+    setIsLoading(false)
   }
 
-  const logout = async () => {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include'
-      })
-    } catch (error) {
-      console.error('Logout failed:', error)
-    } finally {
-      setIsAuthenticated(false)
-    }
-  }
-
-  const value = {
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
+  async function signOut() {
+    await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, profile, isLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   )
