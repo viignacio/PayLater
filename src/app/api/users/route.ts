@@ -1,146 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { name } = body
-
-    // Validate required fields
-    if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: 'User name is required' },
-        { status: 400 }
-      )
-    }
-
-    // Create the user
-    const user = await prisma.user.create({
-      data: {
-        name: name.trim(),
-      }
-    })
-
-    return NextResponse.json({
-      user,
-      message: 'User created successfully'
-    })
-
-  } catch (error) {
-    console.error('Create user error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
+import { createClient } from '@/lib/supabase/server'
+import { toProfile } from '@/lib/transformers'
 
 export async function GET() {
-  try {
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' }
-    })
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Add "(Deleted User)" tag to deleted users
-    const usersWithDeletedTag = users.map(user => ({
-      ...user,
-      name: user.deletedAt ? `${user.name} (Deleted User)` : user.name
-    }))
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false })
 
-    return NextResponse.json({ users: usersWithDeletedTag })
-  } catch (error) {
-    console.error('Get users error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const users = (data ?? []).map(row => ({
+    ...toProfile(row),
+    name: row.deleted_at ? `${row.name} (Deleted User)` : row.name,
+  }))
+
+  return NextResponse.json({ users })
 }
 
 export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { id, name, qrCode, totalOwed, totalOwing } = body
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!id) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
+  const body = await request.json()
+  const { name, avatar } = body
 
-    // Update the user
-    const user = await prisma.user.update({
-      where: { id },
-      data: {
-        ...(name && { name: name.trim() }),
-        ...(qrCode !== undefined && { qrCode }),
-        ...(totalOwed !== undefined && { totalOwed: parseFloat(totalOwed) || 0 }),
-        ...(totalOwing !== undefined && { totalOwing: parseFloat(totalOwing) || 0 })
-      }
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      ...(name && { name: name.trim() }),
+      ...(avatar !== undefined && { avatar }),
+      updated_at: new Date().toISOString(),
     })
+    .eq('id', user.id)
+    .select()
+    .single()
 
-    return NextResponse.json({
-      user,
-      message: 'User updated successfully'
-    })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  } catch (error) {
-    console.error('Update user error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json({ user: toProfile(data), message: 'Profile updated successfully' })
 }
 
 export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('id')
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
+  const { searchParams } = new URL(request.url)
+  const userId = searchParams.get('id')
 
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
+  if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+  if (userId !== user.id) return NextResponse.json({ error: 'Can only delete your own account' }, { status: 403 })
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
+  const { error } = await supabase
+    .from('profiles')
+    .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', userId)
 
-    // Check if user is already deleted
-    if (user.deletedAt) {
-      return NextResponse.json(
-        { error: 'User is already deleted' },
-        { status: 400 }
-      )
-    }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Soft delete the user (set deletedAt timestamp)
-    await prisma.user.update({
-      where: { id: userId },
-      data: { deletedAt: new Date() }
-    })
-
-    return NextResponse.json({
-      message: 'User deleted successfully'
-    })
-
-  } catch (error) {
-    console.error('Delete user error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json({ message: 'User deleted successfully' })
 }

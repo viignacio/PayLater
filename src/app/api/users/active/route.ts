@@ -1,21 +1,19 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
+import { toProfile } from '@/lib/transformers'
 
 export async function GET() {
-  try {
-    const users = await prisma.user.findMany({
-      where: {
-        deletedAt: null // Only get non-deleted users
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    return NextResponse.json({ users })
-  } catch (error) {
-    console.error('Get active users error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ users: (data ?? []).map(toProfile) })
 }
