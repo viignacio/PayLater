@@ -69,7 +69,6 @@ export default function DashboardPage() {
     description?: string
     startDate?: string
     endDate?: string
-    createdBy: string
   }) => {
     try {
       const response = await fetch('/api/trips', {
@@ -699,7 +698,6 @@ export default function DashboardPage() {
       <CreateTripModal
         isOpen={isCreateTripModalOpen}
         onClose={() => setIsCreateTripModalOpen(false)}
-        users={users}
         onCreateTrip={handleCreateTrip}
       />
 

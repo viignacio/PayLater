@@ -3,43 +3,30 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { X, MapPin, Calendar, User, ChevronDown } from "lucide-react"
-
-interface User {
-  id: string
-  name: string
-  avatar?: string
-  qrCode?: string
-  totalOwed: number
-  totalOwing: number
-  createdAt: string
-}
+import { X, MapPin, Calendar } from "lucide-react"
 
 interface CreateTripModalProps {
   isOpen: boolean
   onClose: () => void
-  users: User[]
   onCreateTrip: (tripData: {
     name: string
     description?: string
     startDate?: string
     endDate?: string
-    createdBy: string
   }) => void
 }
 
-export function CreateTripModal({ isOpen, onClose, users, onCreateTrip }: CreateTripModalProps) {
+export function CreateTripModal({ isOpen, onClose, onCreateTrip }: CreateTripModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     tripDate: "",
-    createdBy: ""
   })
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name.trim() || !formData.createdBy) return
+    if (!formData.name.trim()) return
 
     setIsLoading(true)
     try {
@@ -47,11 +34,10 @@ export function CreateTripModal({ isOpen, onClose, users, onCreateTrip }: Create
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         startDate: formData.tripDate || undefined,
-        createdBy: formData.createdBy
       })
-      
+
       // Reset form
-      setFormData({ name: "", description: "", tripDate: "", createdBy: "" })
+      setFormData({ name: "", description: "", tripDate: "" })
       onClose()
     } catch (error) {
       console.error("Error creating trip:", error)
@@ -140,31 +126,6 @@ export function CreateTripModal({ isOpen, onClose, users, onCreateTrip }: Create
               className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
               required
             />
-          </div>
-
-          <div>
-            <label htmlFor="organizer" className="block text-sm font-semibold text-gray-800 mb-3">
-              Trip Organizer *
-            </label>
-            <div className="relative">
-              <select
-                id="organizer"
-                value={formData.createdBy}
-                onChange={(e) => handleInputChange("createdBy", e.target.value)}
-                className="w-full h-12 px-4 pr-10 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm sm:text-base bg-white transition-all duration-200 appearance-none"
-                required
-              >
-                <option value="">Select a trip organizer...</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <ChevronDown className="h-4 w-4 text-gray-400" />
-              </div>
-            </div>
           </div>
 
           <div>
