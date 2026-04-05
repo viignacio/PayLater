@@ -50,3 +50,8 @@ ENVIRONMENT_SETUP.md
 GITHUB_SETUP.md
 DEPLOYMENT_GUIDE.md
 .env*.local
+
+.agent
+.claude
+docs
+.worktrees
