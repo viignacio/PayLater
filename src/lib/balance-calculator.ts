@@ -76,12 +76,13 @@ export function calculateBalances(
     expense.splits.forEach(split => {
       const userBalance = balances.get(split.userId)
       if (userBalance) {
-        // User owes money for this expense
-        userBalance.totalOwed += split.amount
-        
         // If this user is the payer, they don't owe themselves
         if (split.userId === payerId) {
+          // Payer's own share reduces what they are owed (they effectively paid their own share)
           userBalance.totalOwing -= split.amount
+        } else {
+          // Non-payer owes money for this expense
+          userBalance.totalOwed += split.amount
         }
       }
     })
@@ -165,7 +166,8 @@ export function calculateUserTotalBalance(
       userId: string
       amount: number
     }>
-  }>
+  }>,
+  settlements: Array<{ paidBy: string; paidTo: string; amount: number }> = []
 ): { totalOwed: number; totalOwing: number; netBalance: number } {
   let totalOwed = 0
   let totalOwing = 0
@@ -180,7 +182,7 @@ export function calculateUserTotalBalance(
     const userSplit = expense.splits.find(split => split.userId === userId)
     if (userSplit) {
       totalOwed += userSplit.amount
-      
+
       // If user paid for this expense, they don't owe themselves
       if (expense.paidBy === userId) {
         totalOwing -= userSplit.amount
@@ -188,11 +190,37 @@ export function calculateUserTotalBalance(
     }
   })
 
+  // Apply settlements: settlements paid by this user reduce their debt
+  settlements.forEach(s => {
+    if (s.paidBy === userId) totalOwed -= s.amount
+    if (s.paidTo === userId) totalOwing -= s.amount
+  })
+
   return {
-    totalOwed,
-    totalOwing,
-    netBalance: totalOwing - totalOwed
+    totalOwed: Math.max(0, totalOwed),
+    totalOwing: Math.max(0, totalOwing),
+    netBalance: totalOwing - totalOwed,
   }
+}
+
+/**
+ * Adjust net balances to account for recorded settlements.
+ * Call this after calculateBalances() to get the remaining balance.
+ */
+export function applySettlements(
+  balances: BalanceCalculation[],
+  settlements: Array<{ paidBy: string; paidTo: string; amount: number }>
+): BalanceCalculation[] {
+  const balanceMap = new Map(balances.map(b => [b.userId, { ...b }]))
+
+  settlements.forEach(settlement => {
+    const payer = balanceMap.get(settlement.paidBy)
+    const receiver = balanceMap.get(settlement.paidTo)
+    if (payer) payer.netBalance += settlement.amount
+    if (receiver) receiver.netBalance -= settlement.amount
+  })
+
+  return Array.from(balanceMap.values())
 }
 
 /**
