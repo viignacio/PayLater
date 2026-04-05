@@ -1,81 +1,31 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { toTripMember } from '@/lib/transformers'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params
-    const { userId } = await request.json()
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      )
+  const { userId } = await request.json()
+  if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+
+  const { data, error } = await supabase
+    .from('trip_members')
+    .insert({ trip_id: id, user_id: userId, role: 'MEMBER' })
+    .select('*, user:profiles(*)')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      return NextResponse.json({ error: 'User is already a member of this trip' }, { status: 400 })
     }
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      )
-    }
-
-    // Check if trip exists
-    const trip = await prisma.trip.findUnique({
-      where: { id }
-    })
-
-    if (!trip) {
-      return NextResponse.json(
-        { error: "Trip not found" },
-        { status: 404 }
-      )
-    }
-
-    // Check if user is already a member
-    const existingMember = await prisma.tripMember.findFirst({
-      where: {
-        tripId: id,
-        userId: userId
-      }
-    })
-
-    if (existingMember) {
-      return NextResponse.json(
-        { error: "User is already a member of this trip" },
-        { status: 400 }
-      )
-    }
-
-    // Add user to trip
-    const tripMember = await prisma.tripMember.create({
-      data: {
-        tripId: id,
-        userId: userId,
-        role: 'MEMBER'
-      },
-      include: {
-        user: true
-      }
-    })
-
-    return NextResponse.json({
-      message: "User added to trip successfully",
-      member: tripMember
-    })
-  } catch (error) {
-    console.error("Error adding user to trip:", error)
-    return NextResponse.json(
-      { error: "Failed to add user to trip" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  return NextResponse.json({ message: 'User added to trip successfully', member: toTripMember(data) })
 }
