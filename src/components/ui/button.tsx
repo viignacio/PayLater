@@ -26,14 +26,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const baseClasses = "inline-flex items-center justify-center whitespace-nowrap rounded-2xl font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 relative overflow-hidden group"
     
     const variants = {
-      default: "bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 text-white shadow-soft hover:shadow-glow hover:from-primary-600 hover:to-primary-800 transform hover:-translate-y-0.5",
-      destructive: "bg-gradient-to-br from-error-400 via-error-500 to-error-600 text-white shadow-soft hover:from-error-500 hover:to-error-700 hover:shadow-xl hover:-translate-y-0.5",
-      outline: "border border-white/30 bg-white/10 backdrop-blur-md text-neutral-800 hover:bg-white/20 hover:border-white/50 hover:shadow-medium hover:-translate-y-0.5",
+      default: "bg-primary-600/95 backdrop-blur-md border border-white/20 text-white shadow-soft hover:shadow-glow hover:bg-primary-600 transform hover:-translate-y-0.5",
+      destructive: "bg-error-500/95 backdrop-blur-md border border-white/20 text-white shadow-soft hover:bg-error-600 hover:shadow-xl hover:-translate-y-0.5",
+      outline: "border border-primary-400/40 bg-transparent backdrop-blur-sm text-primary-600 hover:bg-primary-500/10 hover:border-primary-400/80 hover:shadow-medium hover:-translate-y-0.5",
       secondary: "bg-white/80 backdrop-blur-xl border border-white/40 text-neutral-800 hover:bg-white/90 hover:shadow-medium hover:-translate-y-0.5",
       ghost: "text-neutral-600 hover:bg-white/10 hover:text-neutral-900 transition-all duration-200",
       link: "text-primary-600 underline-offset-4 hover:underline hover:text-primary-700 transition-all duration-200",
-      success: "bg-gradient-to-br from-success-400 via-success-500 to-success-600 text-white shadow-soft hover:from-success-500 hover:to-success-700 hover:shadow-xl hover:-translate-y-0.5",
-      warning: "bg-gradient-to-br from-warning-400 via-warning-500 to-warning-600 text-white shadow-soft hover:from-warning-500 hover:to-warning-700 hover:shadow-xl hover:-translate-y-0.5"
+      success: "bg-success-500/95 backdrop-blur-md border border-white/20 text-white shadow-soft hover:bg-success-600 hover:shadow-xl hover:-translate-y-0.5",
+      warning: "bg-warning-500/95 backdrop-blur-md border border-white/20 text-white shadow-soft hover:bg-warning-600 hover:shadow-xl hover:-translate-y-0.5"
     }
     
     const sizes = {

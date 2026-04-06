@@ -216,7 +216,8 @@ export function EditTripModal({ isOpen, onClose, trip, onEditTrip, onDeleteTrip 
             {/* Save Changes Button */}
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 h-12 font-semibold shadow-lg hover:shadow-xl"
+              variant="default"
+              className="w-full h-12"
               disabled={isLoading || !formData.name.trim()}
               isLoading={isLoading}
             >
@@ -228,9 +229,9 @@ export function EditTripModal({ isOpen, onClose, trip, onEditTrip, onDeleteTrip 
             <div className="flex gap-4">
               <Button
                 type="button"
-                variant="outline"
+                variant="destructive"
                 onClick={handleDeleteClick}
-                className="flex-1 h-12 font-semibold text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                className="flex-1 h-12"
                 disabled={isLoading || isDeleting || !onDeleteTrip}
               >
                 <Trash2 className="mr-2 h-4 w-4" />

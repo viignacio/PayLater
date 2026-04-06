@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X, MapPin, Calendar } from "lucide-react"
@@ -151,7 +151,8 @@ export function CreateTripModal({ isOpen, onClose, onCreateTrip }: CreateTripMod
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 order-1 sm:order-2 h-12 font-semibold shadow-lg hover:shadow-xl"
+              variant="default"
+              className="flex-1 order-1 sm:order-2 h-12"
               disabled={isLoading || !formData.name.trim()}
               isLoading={isLoading}
             >

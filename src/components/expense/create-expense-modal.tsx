@@ -399,8 +399,9 @@ export function CreateExpenseModal({
             </Button>
             <Button
               type="submit"
+              variant="default"
               onClick={handleSubmit}
-              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium py-3 px-6 rounded-xl sm:rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="flex-1 h-12"
               disabled={isLoading || !formData.title.trim() || !formData.amount || !formData.paidBy || splits.length === 0}
             >
               {isLoading ? "Adding..." : "Add Expense"}

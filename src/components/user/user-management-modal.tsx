@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
@@ -160,8 +160,9 @@ export function UserManagementModal({
                 />
                 <Button
                   type="submit"
+                  variant="default"
                   disabled={isLoading || !newUserName.trim()}
-                  className="w-full bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 h-12 font-semibold shadow-lg hover:shadow-xl"
+                  className="w-full h-12"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   {isLoading ? "Adding..." : "Add Member"}
@@ -243,8 +244,9 @@ export function UserManagementModal({
           {/* Actions */}
           <div className="flex justify-center py-8 border-t border-gray-200/50">
             <Button
+              variant="secondary"
               onClick={onClose}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 w-full sm:w-auto px-8"
+              className="w-full sm:w-auto px-8"
             >
               Done
             </Button>

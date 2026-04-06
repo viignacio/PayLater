@@ -97,8 +97,9 @@ function InviteContent() {
             )}
             <Button
               onClick={handleAccept}
+              variant="default"
               isLoading={isAccepting}
-              className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white"
+              className="w-full"
             >
               {user ? 'Accept Invite' : 'Sign In & Accept'}
             </Button>

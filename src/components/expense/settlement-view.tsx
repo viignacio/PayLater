@@ -1,6 +1,7 @@
 "use client"
 
 import { Receipt, User, QrCode } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { formatCurrency, calculateBalances, applySettlements, generateSettlementSuggestions } from "@/lib/balance-calculator"
 
 interface User {
@@ -126,12 +127,14 @@ export function SettlementView({ tripId, users, expenses, settlements, onShowQrC
                         <QrCode className="h-4 w-4" />
                       </button>
                     )}
-                    <button
+                    <Button
                       onClick={() => handleRecordSettlement(suggestion.fromUserId, suggestion.toUserId, suggestion.amount)}
-                      className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 hover:from-primary-600 hover:to-primary-800 rounded-xl transition-all duration-300 shadow-medium hover:shadow-glow active:scale-95"
+                      variant="default"
+                      size="sm"
+                      className="px-5 h-10"
                     >
                       Settle Up
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )

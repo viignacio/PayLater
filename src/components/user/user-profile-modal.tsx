@@ -501,9 +501,10 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                     
                     <Button
                       size="sm"
+                      variant="default"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800"
+                      className="w-full"
                     >
                       <Camera className="h-4 w-4 mr-2" />
                       {isUploading ? "Uploading..." : "Add QR Code"}
@@ -532,8 +533,9 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
         {/* Actions - Fixed at bottom */}
         <div className="flex justify-center py-8 border-t border-gray-200/50 px-4 sm:px-8">
           <Button
+            variant="secondary"
             onClick={onClose}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 w-full sm:w-auto px-8"
+            className="w-full sm:w-auto px-8"
           >
             Close
           </Button>

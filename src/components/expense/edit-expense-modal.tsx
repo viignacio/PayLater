@@ -499,9 +499,10 @@ export function EditExpenseModal({
             {/* Save Changes Button - Full Width */}
             <Button
               type="submit"
+              variant="default"
               onClick={handleSubmit}
               disabled={isLoading || isDeleting || selectedUsers.length === 0}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium py-3 px-6 rounded-xl sm:rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl h-12 font-semibold"
+              className="w-full h-12"
               isLoading={isLoading}
             >
               <DollarSign className="mr-2 h-4 w-4" />

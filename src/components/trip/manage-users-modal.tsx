@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X, User, Trash2, Eye } from "lucide-react"
@@ -186,7 +186,8 @@ export function ManageUsersModal({
             </Button>
             <Button
               onClick={onClose}
-              className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 order-1 sm:order-2"
+              variant="default"
+              className="flex-1 order-1 sm:order-2"
             >
               Done
             </Button>

@@ -335,7 +335,7 @@ export default function DashboardPage() {
 
         if (tripsResponse.ok) {
           const tripsData = await tripsResponse.json()
-          const mappedTrips = (tripsData.trips || []).map((trip: any) => ({
+          const mappedTrips = (tripsData.trips || []).map((trip: Trip) => ({
             id: trip.id,
             name: trip.name,
             description: trip.description,
@@ -602,8 +602,9 @@ export default function DashboardPage() {
                   </p>
                   <Button 
                     size="lg"
+                    variant="default"
                     onClick={() => setIsCreateTripModalOpen(true)}
-                    className="h-12 sm:h-14 px-8 sm:px-10 text-lg font-semibold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                    className="h-12 sm:h-14 px-8 sm:px-10 text-lg"
                   >
                     <Sparkles className="mr-3 h-5 w-5 sm:h-6 sm:w-6" />
                     Create Your First Trip
@@ -624,7 +625,7 @@ export default function DashboardPage() {
                 </div>
                 <Button
                   onClick={() => setIsCreateTripModalOpen(true)}
-                  className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                  variant="default"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add New Trip

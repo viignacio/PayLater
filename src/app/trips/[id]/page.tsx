@@ -473,10 +473,10 @@ export default function TripDetailPage() {
               setActiveTab('expenses')
               updateTabInUrl('expenses')
             }}
-            className={`flex-1 flex items-center justify-center px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${
+            className={`flex-1 flex items-center justify-center px-4 py-2.5 rounded-[1.25rem] font-medium transition-all duration-300 ${
               activeTab === 'expenses'
-                ? "bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-sm"
-                : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50"
+                ? "bg-primary-600 text-white shadow-soft hover:shadow-glow hover:-translate-y-0.5"
+                : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50 hover:shadow-sm"
             }`}
           >
             <Receipt className="h-4 w-4 mr-2" />
@@ -487,10 +487,10 @@ export default function TripDetailPage() {
               setActiveTab('settlement')
               updateTabInUrl('settlement')
             }}
-            className={`flex-1 flex items-center justify-center px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${
+            className={`flex-1 flex items-center justify-center px-4 py-2.5 rounded-[1.25rem] font-medium transition-all duration-300 ${
               activeTab === 'settlement'
-                ? "bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-sm"
-                : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50"
+                ? "bg-primary-600 text-white shadow-soft hover:shadow-glow hover:-translate-y-0.5"
+                : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50 hover:shadow-sm"
             }`}
           >
             <Calculator className="h-4 w-4 mr-2" />
@@ -505,7 +505,7 @@ export default function TripDetailPage() {
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Expenses</h2>
               <Button
                 onClick={() => setIsCreateExpenseModalOpen(true)}
-                className="bg-gradient-to-br from-success-500 to-success-700 hover:from-success-600 hover:to-success-800 text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2 h-8 sm:h-10"
+                variant="success"
               >
                 <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Add New Expense</span>
@@ -751,8 +751,9 @@ export default function TripDetailPage() {
               )}
               
               <Button
+                variant="default"
                 onClick={handleCloseQrModal}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-xl sm:rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="w-full"
               >
                 Close
               </Button>
