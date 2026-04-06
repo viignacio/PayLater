@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { X, User, Plus, Eye, Trash2 } from "lucide-react"
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
 
 interface User {
   id: string
@@ -42,21 +43,7 @@ export function UserManagementModal({
   const [userBalance, setUserBalance] = useState<{ youOwe: number; youAreOwed: number } | null>(null)
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      
-      return () => {
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen])
+  useLockBodyScroll(isOpen)
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -144,7 +131,7 @@ export function UserManagementModal({
                 <User className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Manage Gastadors</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Manage Group</h2>
                 <p className="text-xs sm:text-sm text-gray-500 font-medium">Add and manage members</p>
               </div>
             </div>
@@ -161,13 +148,13 @@ export function UserManagementModal({
           <div className="pt-2 sm:pt-3">
             {/* Enhanced Add New User Form */}
             <div className="mb-6">
-              <h3 className="text-sm font-semibold text-gray-800 mb-4">Add New Gastador</h3>
+              <h3 className="text-sm font-semibold text-gray-800 mb-4">Add New Member</h3>
               <form onSubmit={handleAddUser} className="space-y-4">
                 <Input
                   type="text"
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="Enter gastador name"
+                  placeholder="Enter member name"
                   className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
                   required
                 />
@@ -177,7 +164,7 @@ export function UserManagementModal({
                   className="w-full bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 h-12 font-semibold shadow-lg hover:shadow-xl"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  {isLoading ? "Adding..." : "Add Gastador"}
+                  {isLoading ? "Adding..." : "Add Member"}
                 </Button>
               </form>
             </div>
@@ -188,7 +175,7 @@ export function UserManagementModal({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search gastadors..."
+                placeholder="Search members..."
                 className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
               />
             </div>
@@ -196,7 +183,7 @@ export function UserManagementModal({
             {/* Enhanced Current Users */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-800 mb-4">
-                All Gastadors ({filteredUsers.length})
+                All Members ({filteredUsers.length})
               </h3>
               
               {filteredUsers.length === 0 ? (
@@ -205,10 +192,10 @@ export function UserManagementModal({
                     <User className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" />
                   </div>
                   <p className="text-gray-600 text-sm sm:text-base font-medium">
-                    {searchTerm ? "No gastadors found" : "No gastadors added yet"}
+                    {searchTerm ? "No members found" : "No members added yet"}
                   </p>
                   {!searchTerm && (
-                    <p className="text-gray-400 text-xs mt-2">Add a new gastador above to get started</p>
+                    <p className="text-gray-400 text-xs mt-2">Add a new member above to get started</p>
                   )}
                 </div>
               ) : (
@@ -241,7 +228,7 @@ export function UserManagementModal({
                           size="icon"
                           onClick={() => handleDeleteClick(user)}
                           className="text-gray-400 h-8 w-8 sm:h-9 sm:w-9 rounded-lg"
-                          title="Remove Gastador"
+                          title="Remove Member"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -277,21 +264,21 @@ export function UserManagementModal({
               <p className="mb-3">
                 Are you sure you want to delete <strong>{userToDelete.name}</strong>? This action cannot be undone.
               </p>
-              {userBalance && (userBalance.youOwe > 0 || userBalance.youAreOwed > 0) && (
+              {userBalance && (userBalance.youOwe > 0 || userBalance.youAreOwed > 0) ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <p className="text-yellow-800 text-sm font-medium mb-1">⚠️ Outstanding Amounts</p>
                   <p className="text-yellow-700 text-sm">
                     This user has outstanding amounts:
-                    {userBalance.youOwe > 0 && (
+                    {userBalance.youOwe > 0 ? (
                       <span className="block">• Owes: ₱{userBalance.youOwe.toFixed(2)}</span>
-                    )}
-                    {userBalance.youAreOwed > 0 && (
+                    ) : null}
+                    {userBalance.youAreOwed > 0 ? (
                       <span className="block">• Is owed: ₱{userBalance.youAreOwed.toFixed(2)}</span>
-                    )}
+                    ) : null}
                     <span className="block mt-1">These amounts will be preserved for settlement purposes.</span>
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
           ) : ""
         }

@@ -4,13 +4,16 @@ import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Plus, ArrowLeft, Users, DollarSign, Receipt, Calculator, Eye, ChevronDown, ChevronUp, ChevronRight, QrCode, X, Edit } from "lucide-react"
-import { CreateExpenseModal } from "@/components/expense/create-expense-modal"
-import { EditExpenseModal } from "@/components/expense/edit-expense-modal"
-import { SettlementView } from "@/components/expense/settlement-view"
-import { ManageUsersModal } from "@/components/trip/manage-users-modal"
-import { UserProfileModal } from "@/components/user/user-profile-modal"
 import { formatCurrency } from "@/lib/utils"
 import Image from "next/image"
+import dynamic from "next/dynamic"
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
+
+const CreateExpenseModal = dynamic(() => import("@/components/expense/create-expense-modal").then(mod => mod.CreateExpenseModal))
+const EditExpenseModal = dynamic(() => import("@/components/expense/edit-expense-modal").then(mod => mod.EditExpenseModal))
+const ManageUsersModal = dynamic(() => import("@/components/trip/manage-users-modal").then(mod => mod.ManageUsersModal))
+const UserProfileModal = dynamic(() => import("@/components/user/user-profile-modal").then(mod => mod.UserProfileModal))
+const SettlementView = dynamic(() => import("@/components/expense/settlement-view").then(mod => mod.SettlementView))
 
 interface Trip {
   id: string
@@ -94,21 +97,7 @@ export default function TripDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   // Prevent body scroll when QR modal is open
-  useEffect(() => {
-    if (isQrModalOpen) {
-      const scrollY = window.scrollY
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      
-      return () => {
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isQrModalOpen])
+    useLockBodyScroll(isQrModalOpen)
 
   const handleShowQrCode = (user: User) => {
     setSelectedUserForQr(user)
@@ -200,31 +189,31 @@ export default function TripDetailPage() {
 
   const loadTripData = useCallback(async () => {
     try {
-      // Load trip details
-      const tripResponse = await fetch(`/api/trips/${tripId}`)
-      if (tripResponse.ok) {
-        const tripData = await tripResponse.json()
+      // Parallelize all data fetching
+      const [tripRes, usersRes, expensesRes, settlementsRes] = await Promise.all([
+        fetch(`/api/trips/${tripId}`),
+        fetch('/api/users'),
+        fetch(`/api/expenses?tripId=${tripId}`),
+        fetch(`/api/settlements?tripId=${tripId}`)
+      ])
+
+      if (tripRes.ok) {
+        const tripData = await tripRes.json()
         setTrip(tripData.trip)
       }
 
-      // Load users
-      const usersResponse = await fetch('/api/users')
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json()
+      if (usersRes.ok) {
+        const usersData = await usersRes.json()
         setUsers(usersData.users || [])
       }
 
-      // Load expenses
-      const expensesResponse = await fetch(`/api/expenses?tripId=${tripId}`)
-      if (expensesResponse.ok) {
-        const expensesData = await expensesResponse.json()
+      if (expensesRes.ok) {
+        const expensesData = await expensesRes.json()
         setExpenses(expensesData.expenses || [])
       }
 
-      // Load settlements
-      const settlementsResponse = await fetch(`/api/settlements?tripId=${tripId}`)
-      if (settlementsResponse.ok) {
-        const settlementsData = await settlementsResponse.json()
+      if (settlementsRes.ok) {
+        const settlementsData = await settlementsRes.json()
         setSettlements(settlementsData.settlements || [])
       }
     } catch (error) {
@@ -349,7 +338,7 @@ export default function TripDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl shadow-lg border-b border-white/20">
+      <header className="sticky top-0 z-50 glass shadow-medium border-b border-white/20">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <div className="flex items-center min-w-0 flex-1">
@@ -357,22 +346,22 @@ export default function TripDetailPage() {
                 variant="ghost"
                 size="icon"
                 onClick={() => router.push('/dashboard')}
-                className="mr-2 sm:mr-3 text-gray-700 hover:text-gray-900 hover:bg-gray-200/50"
+                className="mr-2 sm:mr-3 text-gray-700"
               >
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <div className="min-w-0 flex-1">
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
                   {trip.name}
-                  {trip.startDate && (
+                  {trip.startDate ? (
                     <span className="text-gray-500 font-normal ml-2">
                       - {new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </span>
-                  )}
+                  ) : null}
                 </h1>
-                {trip.description && (
+                {trip.description ? (
                   <p className="text-sm text-gray-600 truncate">{trip.description}</p>
-                )}
+                ) : null}
               </div>
             </div>
             
@@ -384,7 +373,7 @@ export default function TripDetailPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:py-12 px-3 sm:px-4 lg:px-8">
         {/* Trip Details Card */}
-        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl sm:rounded-4xl shadow-2xl border border-white/30 mb-8 overflow-hidden">
+        <div className="glass-card rounded-[2rem] shadow-soft mb-8 overflow-hidden">
           {/* Header - Always Visible */}
           <div 
             className="p-4 sm:p-6 cursor-pointer hover:bg-gray-50/50 transition-colors duration-200"
@@ -478,16 +467,16 @@ export default function TripDetailPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex space-x-1 bg-white/80 backdrop-blur-xl rounded-2xl p-1 shadow-xl border border-white/20 mb-8">
+        <div className="flex space-x-1 bg-gray-100 border border-gray-200/80 rounded-[1.25rem] p-1.5 mb-8 relative overflow-hidden isolate">
           <button
             onClick={() => {
               setActiveTab('expenses')
               updateTabInUrl('expenses')
             }}
-            className={`flex-1 flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${
               activeTab === 'expenses'
-                ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/50'
+                ? "bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-sm"
+                : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50"
             }`}
           >
             <Receipt className="h-4 w-4 mr-2" />
@@ -498,10 +487,10 @@ export default function TripDetailPage() {
               setActiveTab('settlement')
               updateTabInUrl('settlement')
             }}
-            className={`flex-1 flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${
               activeTab === 'settlement'
-                ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/50'
+                ? "bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-sm"
+                : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50"
             }`}
           >
             <Calculator className="h-4 w-4 mr-2" />
@@ -516,7 +505,7 @@ export default function TripDetailPage() {
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Expenses</h2>
               <Button
                 onClick={() => setIsCreateExpenseModalOpen(true)}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2 h-8 sm:h-10"
+                className="bg-gradient-to-br from-success-500 to-success-700 hover:from-success-600 hover:to-success-800 text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2 h-8 sm:h-10"
               >
                 <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Add New Expense</span>
@@ -544,7 +533,7 @@ export default function TripDetailPage() {
                 return (
                   <div 
                     key={expense.id} 
-                    className="bg-white/80 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20 cursor-pointer sm:hover:bg-white/90 sm:hover:shadow-2xl sm:hover:scale-[1.02] transition-all duration-300"
+                    className="glass-card rounded-[1.5rem] p-4 sm:p-6 shadow-soft cursor-pointer sm:hover:bg-white/20 sm:hover:shadow-medium sm:hover:scale-[1.01] transition-all duration-300"
                     onClick={() => toggleExpenseExpansion(expense.id)}
                   >
                     {/* Main Expense Info - Always Visible */}
@@ -690,9 +679,9 @@ export default function TripDetailPage() {
       )}
 
       {/* QR Code Modal */}
-      {isQrModalOpen && selectedUserForQr && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm sm:max-w-md transform transition-all duration-300 scale-100 max-h-[90vh] flex flex-col">
+      {isQrModalOpen && selectedUserForQr ? (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="glass-premium rounded-[2rem] shadow-glow w-full max-w-sm sm:max-w-md transform transition-all duration-300 scale-100 max-h-[90vh] flex flex-col">
             {/* Empty header space - 16px on mobile, 32px on desktop */}
             <div className="h-4 sm:h-8 flex-shrink-0"></div>
             
@@ -770,7 +759,7 @@ export default function TripDetailPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

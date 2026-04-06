@@ -49,9 +49,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     }
     
     const variants = {
-      default: "bg-white/80 backdrop-blur-sm border border-neutral-200 focus:border-primary-500 focus:bg-white",
-      filled: "bg-neutral-50 border border-neutral-200 focus:border-primary-500 focus:bg-white",
-      outlined: "bg-transparent border-2 border-neutral-200 focus:border-primary-500"
+      default: "bg-white/70 backdrop-blur-xl saturate-[180%] border border-white/30 focus:border-primary-500/50 focus:bg-white/90 shadow-soft",
+      filled: "bg-neutral-50/80 backdrop-blur-md border border-neutral-200 focus:border-primary-500 focus:bg-white",
+      outlined: "bg-transparent border-2 border-neutral-200 focus:border-primary-500 shadow-sm"
     }
     
     const hasError = !!error
@@ -86,7 +86,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             type={inputType}
             className={cn(
-              "w-full border rounded-xl text-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all duration-200",
+              "w-full border rounded-2xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-4 focus:ring-primary-500/10 transition-all duration-300",
               sizeClasses[size],
               variants[variant],
               icon && (size === "sm" ? "pl-10" : size === "lg" ? "pl-14" : "pl-12"),

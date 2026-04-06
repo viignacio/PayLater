@@ -93,12 +93,12 @@ export function SettlementView({ tripId, users, expenses, settlements, onShowQrC
             {suggestions.map((suggestion, index) => {
               const payerUser = users.find(u => u.id === suggestion.toUserId)
               return (
-                <div key={index} className="bg-white/80 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl border border-white/20">
+                <div key={index} className="glass-card rounded-[2rem] p-4 sm:p-6 shadow-soft">
                   {/* Suggestion Header */}
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <div className="flex items-center min-w-0 flex-1">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl sm:rounded-2xl flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0">
-                        <User className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl sm:rounded-2xl flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0">
+                        <User className="h-4 w-4 sm:h-5 sm:w-5 text-primary-600" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4 className="text-base sm:text-lg font-bold text-gray-900 truncate">{suggestion.fromUserName}</h4>
@@ -128,9 +128,9 @@ export function SettlementView({ tripId, users, expenses, settlements, onShowQrC
                     )}
                     <button
                       onClick={() => handleRecordSettlement(suggestion.fromUserId, suggestion.toUserId, suggestion.amount)}
-                      className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+                      className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 hover:from-primary-600 hover:to-primary-800 rounded-xl transition-all duration-300 shadow-medium hover:shadow-glow active:scale-95"
                     >
-                      Mark as Paid
+                      Settle Up
                     </button>
                   </div>
                 </div>

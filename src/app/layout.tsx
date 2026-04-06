@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   keywords: ["expense tracker", "split bills", "group expenses", "trip expenses"],
   authors: [{ name: "PayLater Team" }],
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "/paylater.png",
+    shortcut: "/paylater.png",
+    apple: "/paylater.png",
   },
   manifest: "/manifest.json",
 }

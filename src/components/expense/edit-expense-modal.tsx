@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { X, DollarSign, ChevronDown, Trash2 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
 
 interface User {
   id: string
@@ -83,21 +84,7 @@ export function EditExpenseModal({
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      
-      return () => {
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen])
+    useLockBodyScroll(isOpen)
 
   // Initialize form data when expense changes
   useEffect(() => {
@@ -455,7 +442,7 @@ export function EditExpenseModal({
             </div>
 
             {/* Split Amounts */}
-            {selectedUsers.length > 0 && formData.amount && (
+            {selectedUsers.length > 0 && formData.amount ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-sm font-medium text-gray-700">
@@ -501,7 +488,7 @@ export function EditExpenseModal({
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
           </form>
         </div>

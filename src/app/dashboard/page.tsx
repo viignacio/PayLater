@@ -1,16 +1,19 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Plus, Users, Sparkles, MapPin, Menu, X, ChevronDown, Edit3, LogOut } from "lucide-react"
+import { Plus, Users, Sparkles, MapPin, Menu, X, ChevronDown, Edit3, LogOut, User } from "lucide-react"
 import Image from "next/image"
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { CreateTripModal } from "@/components/trip/create-trip-modal"
-import { EditTripModal } from "@/components/trip/edit-trip-modal"
-import { UserManagementModal } from "@/components/user/user-management-modal"
-import { UserProfileModal } from "@/components/user/user-profile-modal"
 import { Loading } from "@/components/ui/loading"
 import { useAuth } from "@/contexts/AuthContext"
+import dynamic from "next/dynamic"
+import { useClickOutside } from "@/hooks/use-click-outside"
+
+const CreateTripModal = dynamic(() => import("@/components/trip/create-trip-modal").then(mod => mod.CreateTripModal))
+const EditTripModal = dynamic(() => import("@/components/trip/edit-trip-modal").then(mod => mod.EditTripModal))
+const UserManagementModal = dynamic(() => import("@/components/user/user-management-modal").then(mod => mod.UserManagementModal))
+const UserProfileModal = dynamic(() => import("@/components/user/user-profile-modal").then(mod => mod.UserProfileModal))
 
 interface Trip {
   id: string
@@ -49,7 +52,7 @@ interface ApiUser {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { signOut } = useAuth()
+  const { signOut, profile } = useAuth()
   const [trips, setTrips] = useState<Trip[]>([]) // Will be populated from API later
   const [users, setUsers] = useState<User[]>([]) // Global users list
   const [isLoading, setIsLoading] = useState(true) // Loading state for initial data fetch
@@ -176,6 +179,21 @@ export default function DashboardPage() {
 
   const handleViewProfile = (user: User) => {
     setSelectedUser(user)
+    setIsUserProfileModalOpen(true)
+  }
+
+  const handleOpenMyProfile = () => {
+    if (!profile) return
+    const me = users.find(u => u.id === profile.id) ?? {
+      id: profile.id,
+      name: profile.name,
+      avatar: profile.avatar ?? undefined,
+      qrCode: profile.qrCode ?? undefined,
+      totalOwed: 0,
+      totalOwing: 0,
+      createdAt: profile.createdAt,
+    }
+    setSelectedUser(me)
     setIsUserProfileModalOpen(true)
   }
 
@@ -309,19 +327,15 @@ export default function DashboardPage() {
       try {
         setIsLoading(true)
         
-        // Load trips
-        const tripsResponse = await fetch('/api/trips')
+        // Parallelize loading trips and users
+        const [tripsResponse, usersResponse] = await Promise.all([
+          fetch('/api/trips'),
+          fetch('/api/users/active')
+        ])
+
         if (tripsResponse.ok) {
           const tripsData = await tripsResponse.json()
-          const mappedTrips = (tripsData.trips || []).map((trip: {
-            id: string
-            name: string
-            description?: string
-            startDate?: string
-            endDate?: string
-            createdAt: string
-            creator: { id: string; name: string }
-          }) => ({
+          const mappedTrips = (tripsData.trips || []).map((trip: any) => ({
             id: trip.id,
             name: trip.name,
             description: trip.description,
@@ -333,8 +347,6 @@ export default function DashboardPage() {
           setTrips(mappedTrips)
         }
 
-        // Load active users (for Manage Gastadors modal)
-        const usersResponse = await fetch('/api/users/active')
         if (usersResponse.ok) {
           const usersData = await usersResponse.json()
           const mappedUsers = (usersData.users || []).map((user: ApiUser) => ({
@@ -359,37 +371,19 @@ export default function DashboardPage() {
     loadData()
   }, [])
 
-  // Close mobile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-        setIsMobileMenuOpen(false)
-      }
-      if (manageDropdownRef.current && !manageDropdownRef.current.contains(event.target as Node)) {
-        setIsManageDropdownOpen(false)
-      }
-    }
-
-    if (isMobileMenuOpen || isManageDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isMobileMenuOpen, isManageDropdownOpen])
+  // Use hooks for outside clicks
+  useClickOutside(mobileMenuRef, () => setIsMobileMenuOpen(false))
+  useClickOutside(manageDropdownRef, () => setIsManageDropdownOpen(false))
 
   return (
     <>
       {/* Enhanced Header */}
-      <header id="dashboard-header" className="sticky top-0 z-50 bg-white/90 backdrop-blur-2xl shadow-xl border-b border-white/30" suppressHydrationWarning>
+      <header id="dashboard-header" className="sticky top-0 z-50 glass border-b border-white/20 shadow-medium" suppressHydrationWarning>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 sm:h-20">
               <div className="flex items-center min-w-0 flex-1">
-                <div className="relative group">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 mr-3 sm:mr-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                    <Image src="/logo.svg" alt="PayLater Logo" width={24} height={24} priority className="w-6 h-6 sm:w-7 sm:h-7 filter brightness-0 invert" />
-                  </div>
+                <div className="relative group mr-3 sm:mr-4">
+                  <Image src="/paylater.png" alt="PayLater Logo" width={32} height={32} priority className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
                 </div>
                 <div className="flex flex-col">
                   <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent truncate">
@@ -418,6 +412,17 @@ export default function DashboardPage() {
                 
                 {/* Desktop Menu Items */}
                 <div className="hidden md:flex items-center space-x-3">
+                  {/* Profile Avatar Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenMyProfile}
+                    className="bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Button>
+
                   <div className="relative" ref={manageDropdownRef}>
                     <Button
                       variant="outline"
@@ -455,8 +460,8 @@ export default function DashboardPage() {
                         >
                           <Users className="mr-3 h-4 w-4 text-green-600" />
                           <div>
-                            <div className="font-medium text-gray-900">Manage Members</div>
-                            <div className="text-sm text-gray-500">Add or remove gastadors</div>
+                            <div className="font-medium text-gray-900">Manage Group</div>
+                            <div className="text-sm text-gray-500">Add or remove members</div>
                           </div>
                         </button>
                       </div>
@@ -495,6 +500,17 @@ export default function DashboardPage() {
           <div ref={mobileMenuRef} className="md:hidden fixed top-16 sm:top-20 left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-white/20 shadow-lg z-40">
             <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4">
               <div className="flex flex-col space-y-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleOpenMyProfile()
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+                >
+                  <User className="mr-3 h-4 w-4" />
+                  My Profile
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -540,9 +556,9 @@ export default function DashboardPage() {
               <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-600" />
             </div>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-4 sm:mb-6 animate-fade-in sm:leading-relaxed lg:leading-loose">
-              Hello mga gastadors! 
+              Welcome back! 
               <br className="sm:hidden" />
-              <span className="block sm:inline"> Asa nasad ta?</span>
+              <span className="block sm:inline"> Where to next?</span>
             </h2>
             <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto animate-fade-in-delay px-4 leading-relaxed">
               Create trips, add members, and split expenses easily with your friends. 
@@ -566,7 +582,7 @@ export default function DashboardPage() {
             </div>
           ) : trips.length === 0 ? (
             <div className="group max-w-2xl mx-auto">
-              <div className="bg-white/90 backdrop-blur-2xl rounded-3xl sm:rounded-4xl p-8 sm:p-12 lg:p-16 text-center border border-white/30 shadow-2xl transform transition-all duration-500 group-hover:scale-[1.02] group-hover:shadow-3xl relative overflow-hidden">
+              <div className="glass-premium rounded-[2.5rem] p-8 sm:p-12 lg:p-16 text-center shadow-glow transform transition-all duration-500 group-hover:scale-[1.02] relative overflow-hidden">
                 {/* Decorative background elements */}
                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-50/50 via-transparent to-purple-50/50 rounded-3xl sm:rounded-4xl" />
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-2xl" />
@@ -617,13 +633,13 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                 {trips.map((trip, index) => (
                   <div key={trip.id} className="group h-full animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                    <div className="bg-white/90 backdrop-blur-2xl rounded-3xl sm:rounded-4xl p-6 sm:p-8 shadow-2xl border border-white/30 transform transition-all duration-500 sm:group-hover:scale-105 sm:group-hover:shadow-3xl sm:group-hover:-translate-y-3 h-full flex flex-col relative overflow-hidden">
+                    <div className="glass-card rounded-[2rem] p-6 sm:p-8 shadow-medium transform transition-all duration-500 sm:group-hover:scale-[1.05] sm:group-hover:shadow-glow sm:group-hover:-translate-y-3 h-full flex flex-col relative overflow-hidden">
                       {/* Decorative background gradient */}
                       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-50/30 via-transparent to-purple-50/30 rounded-3xl sm:rounded-4xl" />
                       
                       {/* Header Section */}
                       <div className="flex items-start justify-between mb-4 sm:mb-6 relative z-10">
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg sm:group-hover:shadow-xl transition-all duration-300 sm:group-hover:scale-110">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center shadow-lg sm:group-hover:shadow-xl transition-all duration-300 sm:group-hover:scale-110">
                           <MapPin className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                         </div>
                         <div className="text-right">
@@ -640,9 +656,9 @@ export default function DashboardPage() {
                       {/* Content Section - Flexible */}
                       <div className="flex-1 flex flex-col relative z-10">
                         <h4 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-3 sm:mb-4 line-clamp-2 leading-tight">{trip.name}</h4>
-                        {trip.description && (
+                        {trip.description ? (
                           <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6 line-clamp-3 flex-1 leading-relaxed">{trip.description}</p>
-                        )}
+                        ) : null}
                       </div>
                       
                       {/* Footer Section - Fixed at bottom */}

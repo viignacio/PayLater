@@ -28,16 +28,19 @@ export async function PUT(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { name, avatar } = body
+  const { id, name, avatar, qrCode } = body
+
+  const targetId = id || user.id
 
   const { data, error } = await supabase
     .from('profiles')
     .update({
       ...(name && { name: name.trim() }),
       ...(avatar !== undefined && { avatar }),
+      ...(qrCode !== undefined && { qr_code: qrCode }),
       updated_at: new Date().toISOString(),
     })
-    .eq('id', user.id)
+    .eq('id', targetId)
     .select()
     .single()
 

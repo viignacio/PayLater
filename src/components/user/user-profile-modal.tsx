@@ -7,6 +7,7 @@ import { X, Upload, QrCode, DollarSign, CreditCard, Camera, Edit3, ChevronDown, 
 import Image from "next/image"
 import { formatCurrency } from "@/lib/utils"
 import { createClient } from '@/lib/supabase/client'
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
 
 interface User {
   id: string
@@ -52,29 +53,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen || isQrViewerOpen) {
-      // Store the current scroll position
-      const scrollY = window.scrollY
-      
-      // Prevent scrolling on the body
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      document.body.style.overflow = 'hidden'
-      
-      return () => {
-        // Restore scrolling when modal closes
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        document.body.style.overflow = ''
-        
-        // Restore scroll position
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen, isQrViewerOpen])
+    useLockBodyScroll(isOpen || isQrViewerOpen)
 
   const fetchUserBalance = useCallback(async () => {
     if (!user) return
@@ -338,7 +317,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                     </div>
                     
                     {/* Expanded Content */}
-                    {expandedCard === 'owed' && (
+                    {expandedCard === 'owed' ? (
                       <div className="mt-3 pt-3 border-t border-error-200">
                         {isLoadingBalance ? (
                           <div className="space-y-2">
@@ -370,7 +349,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                           <p className="text-xs text-error-500">No outstanding amounts</p>
                         )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                   
                   {/* Total Owing Card */}
@@ -407,7 +386,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                     </div>
                     
                     {/* Expanded Content */}
-                    {expandedCard === 'owing' && (
+                    {expandedCard === 'owing' ? (
                       <div className="mt-3 pt-3 border-t border-success-200">
                         {isLoadingBalance ? (
                           <div className="space-y-2">
@@ -439,7 +418,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                           <p className="text-xs text-success-500">No outstanding amounts</p>
                         )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -458,7 +437,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                     {/* QR Code Display */}
                     <div className="text-center">
                       <div className="inline-block p-2 sm:p-3 bg-white rounded-lg sm:rounded-xl shadow-soft border border-neutral-200">
-                        {qrUrl && (
+                        {qrUrl ? (
                           <Image
                             src={qrUrl}
                             alt="Payment QR Code"
@@ -466,7 +445,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                             height={120}
                             className="rounded-lg w-24 h-24 sm:w-40 sm:h-40"
                           />
-                        )}
+                        ) : null}
                       </div>
                     </div>
                     
@@ -562,7 +541,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
       </div>
 
       {/* QR Code Viewer Modal */}
-      {isQrViewerOpen && user.qrCode && (
+      {isQrViewerOpen && user.qrCode ? (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm sm:max-w-md transform transition-all duration-300 scale-100 max-h-[80vh] flex flex-col">
             {/* Empty header space - 16px on mobile, 32px on desktop */}
@@ -592,7 +571,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
               {/* QR Code Display */}
               <div className="pt-4 sm:pt-6 text-center">
                 <div className="inline-block p-2 sm:p-4 bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-200 mb-4 sm:mb-6">
-                  {qrUrl && (
+                  {qrUrl ? (
                     <Image
                       src={qrUrl}
                       alt="Payment QR Code"
@@ -601,7 +580,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                       className="rounded-xl w-72 h-72 sm:w-80 sm:h-80"
                       priority
                     />
-                  )}
+                  ) : null}
                 </div>
                 
                 <div className="space-y-3 sm:space-y-4">
@@ -613,7 +592,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
               </div>
 
               {/* Download QR Code */}
-              {user.qrCode && user.qrCode.startsWith('data:image') && (
+              {user.qrCode && user.qrCode.startsWith('data:image') ? (
                 <div className="pt-4 sm:pt-6 border-t border-gray-200/50 mt-4 sm:mt-6">
                   <Button
                     onClick={() => {
@@ -630,11 +609,11 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                     Download QR Code
                   </Button>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

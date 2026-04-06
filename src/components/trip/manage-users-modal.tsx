@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X, User, Trash2, Eye } from "lucide-react"
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
 
 interface ManageUsersModalProps {
   isOpen: boolean
@@ -59,29 +60,7 @@ export function ManageUsersModal({
   }
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      // Store the current scroll position
-      const scrollY = window.scrollY
-
-      // Prevent scrolling on the body
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      document.body.style.overflow = 'hidden'
-
-      return () => {
-        // Restore scrolling when modal closes
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        document.body.style.overflow = ''
-
-        // Restore scroll position
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen])
+    useLockBodyScroll(isOpen)
 
   if (!isOpen) return null
 
@@ -99,7 +78,7 @@ export function ManageUsersModal({
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-100 to-emerald-100 rounded-lg sm:rounded-2xl flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
                 <User className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Add Gastadors</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Add Members</h2>
             </div>
             <Button
               variant="ghost"
@@ -123,8 +102,8 @@ export function ManageUsersModal({
                 placeholder="friend@example.com"
                 required
               />
-              {inviteError && <p className="text-sm text-red-600">{inviteError}</p>}
-              {inviteUrl && (
+              {inviteError ? <p className="text-sm text-red-600">{inviteError}</p> : null}
+              {inviteUrl ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
                   <p className="text-sm text-green-700 font-medium">Invite link created!</p>
                   <p className="text-xs text-green-600 break-all">{inviteUrl}</p>
@@ -136,7 +115,7 @@ export function ManageUsersModal({
                     Copy link
                   </button>
                 </div>
-              )}
+              ) : null}
               <Button type="submit" isLoading={isSendingInvite} disabled={!inviteEmail.trim()}>
                 Send Invite
               </Button>

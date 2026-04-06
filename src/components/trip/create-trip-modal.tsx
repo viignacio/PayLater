@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X, MapPin, Calendar } from "lucide-react"
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
 
 interface CreateTripModalProps {
   isOpen: boolean
@@ -51,29 +52,7 @@ export function CreateTripModal({ isOpen, onClose, onCreateTrip }: CreateTripMod
   }
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      // Store the current scroll position
-      const scrollY = window.scrollY
-      
-      // Prevent scrolling on the body
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      document.body.style.overflow = 'hidden'
-      
-      return () => {
-        // Restore scrolling when modal closes
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        document.body.style.overflow = ''
-        
-        // Restore scroll position
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen])
+    useLockBodyScroll(isOpen)
 
   if (!isOpen) return null
 

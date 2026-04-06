@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X, DollarSign, ChevronDown } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
 
 interface User {
   id: string
@@ -52,21 +53,7 @@ export function CreateExpenseModal({
   const [isLoading, setIsLoading] = useState(false)
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      
-      return () => {
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen])
+  useLockBodyScroll(isOpen)
 
   // Initialize splits when users are selected
   useEffect(() => {
@@ -211,24 +198,6 @@ export function CreateExpenseModal({
     return Math.round((parseFloat(formData.amount) - getTotalSplitAmount()) * 100) / 100
   }
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
-      document.body.style.overflow = 'hidden'
-      
-      return () => {
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.width = ''
-        document.body.style.overflow = ''
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -372,7 +341,7 @@ export function CreateExpenseModal({
             </div>
 
             {/* Split Amounts */}
-            {selectedUsers.length > 0 && formData.amount && (
+            {selectedUsers.length > 0 && formData.amount ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-sm font-medium text-gray-700">
@@ -404,13 +373,13 @@ export function CreateExpenseModal({
                   )
                 })}
 
-                {getRemainingAmount() !== 0 && (
+                {getRemainingAmount() !== 0 ? (
                   <div className={`text-xs ${getRemainingAmount() > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {getRemainingAmount() > 0 ? 'Remaining: ₱ ' : 'Over by: ₱ '}{formatCurrency(Math.abs(getRemainingAmount()))}
                   </div>
-                )}
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
 
           </form>

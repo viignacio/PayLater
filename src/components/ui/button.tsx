@@ -23,17 +23,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     disabled,
     ...props 
   }, ref) => {
-    const baseClasses = "inline-flex items-center justify-center whitespace-nowrap rounded-2xl font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 relative overflow-hidden group"
+    const baseClasses = "inline-flex items-center justify-center whitespace-nowrap rounded-2xl font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 relative overflow-hidden group"
     
     const variants = {
-      default: "bg-gradient-to-r from-primary-600 via-primary-700 to-primary-800 text-white shadow-lg hover:from-primary-700 hover:via-primary-800 hover:to-primary-900 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5",
-      destructive: "bg-gradient-to-r from-error-500 via-error-600 to-error-700 text-white shadow-lg hover:from-error-600 hover:via-error-700 hover:to-error-800 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5",
-      outline: "border-2 border-neutral-200 bg-white/90 backdrop-blur-sm text-neutral-700 hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 hover:shadow-lg hover:scale-105 hover:-translate-y-0.5",
-      secondary: "bg-gradient-to-r from-neutral-100 to-neutral-200 text-neutral-700 border border-neutral-200 shadow-md hover:from-neutral-200 hover:to-neutral-300 hover:shadow-lg hover:scale-105 hover:-translate-y-0.5",
-      ghost: "text-neutral-600 hover:bg-neutral-100/80 hover:text-neutral-900 hover:scale-105 transition-all duration-200",
-      link: "text-primary-600 underline-offset-4 hover:underline hover:text-primary-700 hover:scale-105 transition-all duration-200",
-      success: "bg-gradient-to-r from-success-500 via-success-600 to-success-700 text-white shadow-lg hover:from-success-600 hover:via-success-700 hover:to-success-800 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5",
-      warning: "bg-gradient-to-r from-warning-500 via-warning-600 to-warning-700 text-white shadow-lg hover:from-warning-600 hover:via-warning-700 hover:to-warning-800 hover:shadow-xl hover:scale-105 hover:-translate-y-0.5"
+      default: "bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 text-white shadow-soft hover:shadow-glow hover:from-primary-600 hover:to-primary-800 transform hover:-translate-y-0.5",
+      destructive: "bg-gradient-to-br from-error-400 via-error-500 to-error-600 text-white shadow-soft hover:from-error-500 hover:to-error-700 hover:shadow-xl hover:-translate-y-0.5",
+      outline: "border border-white/30 bg-white/10 backdrop-blur-md text-neutral-800 hover:bg-white/20 hover:border-white/50 hover:shadow-medium hover:-translate-y-0.5",
+      secondary: "bg-white/80 backdrop-blur-xl border border-white/40 text-neutral-800 hover:bg-white/90 hover:shadow-medium hover:-translate-y-0.5",
+      ghost: "text-neutral-600 hover:bg-white/10 hover:text-neutral-900 transition-all duration-200",
+      link: "text-primary-600 underline-offset-4 hover:underline hover:text-primary-700 transition-all duration-200",
+      success: "bg-gradient-to-br from-success-400 via-success-500 to-success-600 text-white shadow-soft hover:from-success-500 hover:to-success-700 hover:shadow-xl hover:-translate-y-0.5",
+      warning: "bg-gradient-to-br from-warning-400 via-warning-500 to-warning-600 text-white shadow-soft hover:from-warning-500 hover:to-warning-700 hover:shadow-xl hover:-translate-y-0.5"
     }
     
     const sizes = {
@@ -52,7 +52,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           baseClasses,
           variants[variant],
           sizes[size],
-          isDisabled && "hover:scale-100 hover:shadow-lg hover:-translate-y-0",
+          isDisabled ? "hover:scale-100 hover:shadow-lg hover:-translate-y-0" : "",
           className
         )}
         ref={ref}
@@ -60,28 +60,28 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {/* Shimmer effect overlay */}
-        {!isDisabled && !isLoading && (
+        {!isDisabled && !isLoading ? (
           <div className="absolute inset-0 -top-1 -left-1 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity duration-300" />
-        )}
+        ) : null}
         
         {/* Loading overlay */}
-        {isLoading && (
+        {isLoading ? (
           <div className="absolute inset-0 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
-        )}
+        ) : null}
         
         {/* Content */}
-        <span className={cn("relative z-10 flex items-center", isLoading && "opacity-0")}>
-          {leftIcon && !isLoading && (
+        <span className={cn("relative z-10 flex items-center", isLoading ? "opacity-0" : "")}>
+          {leftIcon && !isLoading ? (
             <span className="mr-2 transition-transform duration-200 group-hover:scale-110">{leftIcon}</span>
-          )}
+          ) : null}
           
           {children}
           
-          {rightIcon && !isLoading && (
+          {rightIcon && !isLoading ? (
             <span className="ml-2 transition-transform duration-200 group-hover:scale-110">{rightIcon}</span>
-          )}
+          ) : null}
         </span>
       </button>
     )
