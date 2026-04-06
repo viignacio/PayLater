@@ -35,17 +35,26 @@ export async function GET(
   let totalOwing = 0
   const tripBalances: Array<{ tripId: string; tripName: string; youOwe: number; youAreOwed: number }> = []
 
-  for (const membership of memberships ?? []) {
-    const trip = membership.trip as any
+  type TripRow = {
+    id: string
+    name: string
+    expenses: Array<{ amount: number; paid_by: string; splits: Array<{ user_id: string; amount: number }> }>
+    settlements: Array<{ paid_by: string; paid_to: string; amount: number }>
+  }
+  type MembershipRow = { trip: TripRow | null }
+  const typedMemberships = (memberships ?? []) as unknown as MembershipRow[]
+
+  for (const membership of typedMemberships) {
+    const trip = membership.trip
     if (!trip) continue
 
-    const expenses = (trip.expenses ?? []).map((e: any) => ({
+    const expenses = (trip.expenses ?? []).map((e) => ({
       amount: Number(e.amount),
       paidBy: e.paid_by,
-      splits: (e.splits ?? []).map((s: any) => ({ userId: s.user_id, amount: Number(s.amount) })),
+      splits: (e.splits ?? []).map((s) => ({ userId: s.user_id, amount: Number(s.amount) })),
     }))
 
-    const settlements = (trip.settlements ?? []).map((s: any) => ({
+    const settlements = (trip.settlements ?? []).map((s) => ({
       paidBy: s.paid_by,
       paidTo: s.paid_to,
       amount: Number(s.amount),

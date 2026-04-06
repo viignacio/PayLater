@@ -85,20 +85,28 @@ export async function DELETE(
 
   if (fetchError) return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
 
-  const expenses = (trip.expenses ?? []).map((e: any) => ({
+  type TripWithRelations = {
+    id: string
+    expenses: Array<{ id: string; amount: number; paid_by: string; splits: Array<{ user_id: string; amount: number }> }>
+    settlements: Array<{ paid_by: string; paid_to: string; amount: number }>
+    members: Array<{ user: { id: string; name: string } | null }>
+  }
+  const tripData = trip as unknown as TripWithRelations
+
+  const expenses = (tripData.expenses ?? []).map((e) => ({
     id: e.id,
     amount: Number(e.amount),
     paidBy: e.paid_by,
-    splits: (e.splits ?? []).map((s: any) => ({ userId: s.user_id, amount: Number(s.amount) })),
+    splits: (e.splits ?? []).map((s) => ({ userId: s.user_id, amount: Number(s.amount) })),
   }))
 
-  const settlements = (trip.settlements ?? []).map((s: any) => ({
+  const settlements = (tripData.settlements ?? []).map((s) => ({
     paidBy: s.paid_by, paidTo: s.paid_to, amount: Number(s.amount),
   }))
 
-  const members = (trip.members ?? []).map((m: any) => ({
-    id: m.user.id, name: m.user.name,
-  }))
+  const members = (tripData.members ?? []).map((m) => ({
+    id: m.user?.id ?? '', name: m.user?.name ?? '',
+  })).filter(m => m.id)
 
   const balances = applySettlements(calculateBalances(expenses, members), settlements)
   const hasUnsettledAmounts = balances.some(b => b.netBalance < -0.01)

@@ -1,3 +1,5 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
 export type Database = {
   public: {
     Tables: {
@@ -28,6 +30,7 @@ export type Database = {
           deleted_at?: string | null
           updated_at?: string
         }
+        Relationships: []
       }
       trips: {
         Row: {
@@ -63,6 +66,7 @@ export type Database = {
           is_active?: boolean
           updated_at?: string
         }
+        Relationships: []
       }
       trip_members: {
         Row: {
@@ -82,6 +86,7 @@ export type Database = {
         Update: {
           role?: Database['public']['Enums']['trip_role']
         }
+        Relationships: []
       }
       trip_invites: {
         Row: {
@@ -109,6 +114,7 @@ export type Database = {
         Update: {
           status?: Database['public']['Enums']['invite_status']
         }
+        Relationships: []
       }
       expenses: {
         Row: {
@@ -123,7 +129,7 @@ export type Database = {
           split_type: Database['public']['Enums']['split_type']
           is_settled: boolean
           receipt_url: string | null
-          ocr_data: Record<string, unknown> | null
+          ocr_data: Json | null
           created_at: string
           updated_at: string
         }
@@ -139,7 +145,7 @@ export type Database = {
           split_type?: Database['public']['Enums']['split_type']
           is_settled?: boolean
           receipt_url?: string | null
-          ocr_data?: Record<string, unknown> | null
+          ocr_data?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -153,9 +159,10 @@ export type Database = {
           split_type?: Database['public']['Enums']['split_type']
           is_settled?: boolean
           receipt_url?: string | null
-          ocr_data?: Record<string, unknown> | null
+          ocr_data?: Json | null
           updated_at?: string
         }
+        Relationships: []
       }
       expense_splits: {
         Row: {
@@ -175,6 +182,7 @@ export type Database = {
         Update: {
           amount?: number
         }
+        Relationships: []
       }
       settlements: {
         Row: {
@@ -200,8 +208,11 @@ export type Database = {
         Update: {
           note?: string | null
         }
+        Relationships: []
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
     Enums: {
       trip_role: 'CREATOR' | 'ADMIN' | 'MEMBER'
       split_type: 'EQUAL' | 'PERCENTAGE' | 'EXACT' | 'SHARES' | 'TEMPLATE'

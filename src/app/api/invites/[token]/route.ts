@@ -71,7 +71,7 @@ export async function GET(
 
   const { data: invite, error } = await serviceSupabase
     .from('trip_invites')
-    .select(`*, trip:trips(id, name)`)
+    .select('*')
     .eq('token', token)
     .eq('status', 'PENDING')
     .single()
@@ -84,9 +84,15 @@ export async function GET(
     return NextResponse.json({ error: 'This invite has expired' }, { status: 410 })
   }
 
+  const { data: trip } = await serviceSupabase
+    .from('trips')
+    .select('id, name')
+    .eq('id', invite.trip_id)
+    .single()
+
   return NextResponse.json({
-    tripId: (invite.trip as any).id,
-    tripName: (invite.trip as any).name,
+    tripId: invite.trip_id,
+    tripName: trip?.name ?? '',
     email: invite.email,
     expiresAt: invite.expires_at,
   })

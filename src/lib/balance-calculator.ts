@@ -1,5 +1,3 @@
-// Removed unused imports: Expense, User from '@prisma/client'
-
 export interface BalanceCalculation {
   userId: string
   userName: string

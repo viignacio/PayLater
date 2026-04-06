@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { toExpense } from '@/lib/transformers'
+import type { Database } from '@/lib/database.types'
 
 export async function GET(
   _request: NextRequest,
@@ -31,24 +32,34 @@ export async function PUT(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
+  const body: {
+    title?: string
+    description?: string
+    amount?: string | number
+    date?: string
+    paidBy?: string
+    splitType?: string
+    splits?: Array<{ userId: string; amount: string | number }>
+  } = await request.json()
   const { title, description, amount, date, paidBy, splitType, splits = [] } = body
 
-  if (amount && parseFloat(amount) <= 0) {
+  if (amount && parseFloat(String(amount)) <= 0) {
     return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
   }
 
+  const updates: Database['public']['Tables']['expenses']['Update'] = {
+    updated_at: new Date().toISOString(),
+  }
+  if (title) updates.title = title.trim()
+  if (description !== undefined) updates.description = description?.trim() ?? null
+  if (amount) updates.amount = parseFloat(String(amount))
+  if (date) updates.date = date
+  if (paidBy) updates.paid_by = paidBy
+  if (splitType) updates.split_type = splitType as Database['public']['Enums']['split_type']
+
   const { error: updateError } = await supabase
     .from('expenses')
-    .update({
-      ...(title && { title: title.trim() }),
-      ...(description !== undefined && { description: description?.trim() ?? null }),
-      ...(amount && { amount: parseFloat(amount) }),
-      ...(date && { date }),
-      ...(paidBy && { paid_by: paidBy }),
-      ...(splitType && { split_type: splitType }),
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq('id', id)
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
@@ -57,7 +68,7 @@ export async function PUT(
     await supabase.from('expense_splits').delete().eq('expense_id', id)
     const { error: splitsError } = await supabase
       .from('expense_splits')
-      .insert(splits.map((s: { userId: string; amount: string | number }) => ({
+      .insert(splits.map((s) => ({
         expense_id: id,
         user_id: s.userId,
         amount: parseFloat(s.amount.toString()),
