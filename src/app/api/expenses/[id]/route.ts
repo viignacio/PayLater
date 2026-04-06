@@ -1,153 +1,103 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-import { SplitType } from '@prisma/client'
+import { createClient } from '@/lib/supabase/server'
+import { toExpense } from '@/lib/transformers'
+import type { Database } from '@/lib/database.types'
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params
-    const expense = await prisma.expense.findUnique({
-      where: { id },
-      include: {
-        payer: true,
-        trip: true,
-        splits: {
-          include: {
-            user: true
-          }
-        }
-      }
-    })
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!expense) {
-      return NextResponse.json(
-        { error: 'Expense not found' },
-        { status: 404 }
-      )
-    }
+  const { data, error } = await supabase
+    .from('expenses')
+    .select(`*, payer:profiles!paid_by(*), splits:expense_splits(*, user:profiles(*))`)
+    .eq('id', id)
+    .single()
 
-    return NextResponse.json({ expense })
-  } catch (error) {
-    console.error('Get expense error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+  if (error) return NextResponse.json({ error: 'Expense not found' }, { status: 404 })
+
+  return NextResponse.json({ expense: toExpense(data) })
 }
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params
-    const body = await request.json()
-    const { 
-      title, 
-      description, 
-      amount, 
-      date,
-      paidBy, 
-      splitType,
-      splits = []
-    } = body
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Validate amount if provided
-    if (amount && parseFloat(amount) <= 0) {
-      return NextResponse.json(
-        { error: 'Amount must be greater than 0' },
-        { status: 400 }
-      )
-    }
+  const body: {
+    title?: string
+    description?: string
+    amount?: string | number
+    date?: string
+    paidBy?: string
+    splitType?: string
+    splits?: Array<{ userId: string; amount: string | number }>
+  } = await request.json()
+  const { title, description, amount, date, paidBy, splitType, splits = [] } = body
 
-    // Update expense and splits in a transaction
-    const expense = await prisma.$transaction(async (tx) => {
-      // Update the expense
-      await tx.expense.update({
-        where: { id },
-        data: {
-          ...(title && { title: title.trim() }),
-          ...(description !== undefined && { description: description?.trim() }),
-          ...(amount && { amount: parseFloat(amount) }),
-          ...(date && { date: new Date(date) }),
-          ...(paidBy && { paidBy }),
-          ...(splitType && { splitType: splitType as SplitType }),
-        },
-        include: {
-          payer: true,
-          trip: true,
-        }
-      })
-
-      // Update splits if provided
-      if (splits.length > 0) {
-        // Delete existing splits
-        await tx.expenseSplit.deleteMany({
-          where: { expenseId: id }
-        })
-
-        // Create new splits
-        await tx.expenseSplit.createMany({
-          data: splits.map((split: { userId: string; amount: string | number }) => ({
-            expenseId: id,
-            userId: split.userId,
-            amount: parseFloat(split.amount.toString()),
-          }))
-        })
-      }
-
-      // Return updated expense with splits
-      return await tx.expense.findUnique({
-        where: { id },
-        include: {
-          payer: true,
-          trip: true,
-          splits: {
-            include: {
-              user: true
-            }
-          }
-        }
-      })
-    })
-
-    return NextResponse.json({
-      expense,
-      message: 'Expense updated successfully'
-    })
-
-  } catch (error) {
-    console.error('Update expense error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+  if (amount && parseFloat(String(amount)) <= 0) {
+    return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
   }
+
+  const updates: Database['public']['Tables']['expenses']['Update'] = {
+    updated_at: new Date().toISOString(),
+  }
+  if (title) updates.title = title.trim()
+  if (description !== undefined) updates.description = description?.trim() ?? null
+  if (amount) updates.amount = parseFloat(String(amount))
+  if (date) updates.date = date
+  if (paidBy) updates.paid_by = paidBy
+  if (splitType) updates.split_type = splitType as Database['public']['Enums']['split_type']
+
+  const { error: updateError } = await supabase
+    .from('expenses')
+    .update(updates)
+    .eq('id', id)
+
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+
+  if (splits.length > 0) {
+    await supabase.from('expense_splits').delete().eq('expense_id', id)
+    const { error: splitsError } = await supabase
+      .from('expense_splits')
+      .insert(splits.map((s) => ({
+        expense_id: id,
+        user_id: s.userId,
+        amount: parseFloat(s.amount.toString()),
+      })))
+    if (splitsError) return NextResponse.json({ error: splitsError.message }, { status: 500 })
+  }
+
+  const { data, error: fetchError } = await supabase
+    .from('expenses')
+    .select(`*, payer:profiles!paid_by(*), splits:expense_splits(*, user:profiles(*))`)
+    .eq('id', id)
+    .single()
+
+  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+
+  return NextResponse.json({ expense: toExpense(data), message: 'Expense updated successfully' })
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params
-    // Delete expense (splits will be deleted automatically due to cascade)
-    await prisma.expense.delete({
-      where: { id }
-    })
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    return NextResponse.json({
-      message: 'Expense deleted successfully'
-    })
+  const { error } = await supabase.from('expenses').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  } catch (error) {
-    console.error('Delete expense error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json({ message: 'Expense deleted successfully' })
 }

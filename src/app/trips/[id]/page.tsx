@@ -66,6 +66,13 @@ interface Expense {
   }>
 }
 
+interface Settlement {
+  id: string
+  paidBy: string
+  paidTo: string
+  amount: number
+}
+
 export default function TripDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -83,6 +90,7 @@ export default function TripDetailPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isQrModalOpen, setIsQrModalOpen] = useState(false)
   const [selectedUserForQr, setSelectedUserForQr] = useState<User | null>(null)
+  const [settlements, setSettlements] = useState<Settlement[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Prevent body scroll when QR modal is open
@@ -212,6 +220,13 @@ export default function TripDetailPage() {
         const expensesData = await expensesResponse.json()
         setExpenses(expensesData.expenses || [])
       }
+
+      // Load settlements
+      const settlementsResponse = await fetch(`/api/settlements?tripId=${tripId}`)
+      if (settlementsResponse.ok) {
+        const settlementsData = await settlementsResponse.json()
+        setSettlements(settlementsData.settlements || [])
+      }
     } catch (error) {
       console.error('Error loading trip data:', error)
     } finally {
@@ -256,29 +271,6 @@ export default function TripDetailPage() {
     }
   }
 
-  const handleAddUser = async (userId: string) => {
-    try {
-      // Add user to trip
-      const response = await fetch(`/api/trips/${tripId}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to add user to trip')
-      }
-
-      // Reload trip data to get updated members
-      loadTripData()
-    } catch (error) {
-      console.error("Error adding user to trip:", error)
-      alert("Failed to add user to trip. Please try again.")
-    }
-  }
-
   const handleRemoveUser = async (userId: string) => {
     try {
       const response = await fetch(`/api/trips/${tripId}/members/${userId}`, {
@@ -297,8 +289,15 @@ export default function TripDetailPage() {
     }
   }
 
-  const handleViewProfile = (user: User) => {
-    setSelectedUser(user)
+  const handleViewProfile = (partialUser: { id: string; name: string; avatar?: string | null }) => {
+    const fullUser = users.find(u => u.id === partialUser.id) ?? {
+      ...partialUser,
+      avatar: partialUser.avatar ?? undefined,
+      totalOwed: 0,
+      totalOwing: 0,
+      createdAt: new Date().toISOString(),
+    }
+    setSelectedUser(fullUser)
     setIsUserProfileModalOpen(true)
   }
 
@@ -620,11 +619,14 @@ export default function TripDetailPage() {
 
         {activeTab === 'settlement' && (
           <SettlementView
-            users={users.filter(user => 
+            tripId={tripId}
+            users={users.filter(user =>
               trip?.members.some(member => member.user.id === user.id)
             )}
             expenses={expenses}
+            settlements={settlements}
             onShowQrCode={handleShowQrCode}
+            onSettlementRecorded={loadTripData}
           />
         )}
       </main>
@@ -659,11 +661,12 @@ export default function TripDetailPage() {
       <ManageUsersModal
         isOpen={isManageUsersModalOpen}
         onClose={() => setIsManageUsersModalOpen(false)}
-        users={users}
-        tripMembers={users.filter(user => 
-          trip?.members.some(member => member.user.id === user.id)
-        )}
-        onAddUser={handleAddUser}
+        tripId={tripId}
+        tripMembers={(trip?.members ?? []).map(member => ({
+          id: member.user.id,
+          name: member.user.name,
+          role: member.role,
+        }))}
         onRemoveUser={handleRemoveUser}
         onViewProfile={handleViewProfile}
       />

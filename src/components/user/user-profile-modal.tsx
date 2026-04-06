@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { X, Upload, QrCode, DollarSign, CreditCard, Camera, Edit3, ChevronDown, ChevronUp } from "lucide-react"
 import Image from "next/image"
 import { formatCurrency } from "@/lib/utils"
+import { createClient } from '@/lib/supabase/client'
 
 interface User {
   id: string
@@ -47,6 +48,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
   const [userBalance, setUserBalance] = useState<UserBalance | null>(null)
   const [isLoadingBalance, setIsLoadingBalance] = useState(false)
   const [expandedCard, setExpandedCard] = useState<'owed' | 'owing' | null>(null)
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Prevent body scroll when modal is open
@@ -110,6 +112,19 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
     }
   }, [isOpen])
 
+  // Generate signed URL for QR code from Supabase Storage
+  useEffect(() => {
+    const fetchQrUrl = async () => {
+      if (!user?.qrCode) { setQrUrl(null); return }
+      const supabase = createClient()
+      const { data } = await supabase.storage
+        .from('qr-codes')
+        .createSignedUrl(user.qrCode, 3600)
+      setQrUrl(data?.signedUrl ?? null)
+    }
+    fetchQrUrl()
+  }, [user?.qrCode])
+
   if (!isOpen || !user) return null
 
   const handleSave = async () => {
@@ -142,19 +157,38 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
 
     setIsUploading(true)
     try {
-      // Convert to base64
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const base64 = e.target?.result as string
-        await onUpdateUser(user.id, { qrCode: base64 })
-        setIsUploading(false)
-      }
-      reader.readAsDataURL(file)
+      await handleQrUpload(file)
     } catch (error) {
       console.error('Error uploading QR code:', error)
       alert('Failed to upload QR code')
+    } finally {
       setIsUploading(false)
     }
+  }
+
+  const handleQrUpload = async (file: File) => {
+    const supabase = createClient()
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser) return
+
+    const ext = file.name.split('.').pop()
+    const path = `${authUser.id}/qr.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('qr-codes')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) {
+      console.error('QR upload failed:', uploadError.message)
+      return
+    }
+
+    // Save the storage path to the profile
+    await fetch('/api/users/qr', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qrCode: path }),
+    })
   }
 
   const handleRemoveQRCode = async () => {
@@ -424,13 +458,15 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
                     {/* QR Code Display */}
                     <div className="text-center">
                       <div className="inline-block p-2 sm:p-3 bg-white rounded-lg sm:rounded-xl shadow-soft border border-neutral-200">
-                        <Image
-                          src={user.qrCode}
-                          alt="Payment QR Code"
-                          width={120}
-                          height={120}
-                          className="rounded-lg w-24 h-24 sm:w-40 sm:h-40"
-                        />
+                        {qrUrl && (
+                          <Image
+                            src={qrUrl}
+                            alt="Payment QR Code"
+                            width={120}
+                            height={120}
+                            className="rounded-lg w-24 h-24 sm:w-40 sm:h-40"
+                          />
+                        )}
                       </div>
                     </div>
                     
@@ -556,14 +592,16 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
               {/* QR Code Display */}
               <div className="pt-4 sm:pt-6 text-center">
                 <div className="inline-block p-2 sm:p-4 bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-200 mb-4 sm:mb-6">
-                  <Image
-                    src={user.qrCode}
-                    alt="Payment QR Code"
-                    width={320}
-                    height={320}
-                    className="rounded-xl w-72 h-72 sm:w-80 sm:h-80"
-                    priority
-                  />
+                  {qrUrl && (
+                    <Image
+                      src={qrUrl}
+                      alt="Payment QR Code"
+                      width={320}
+                      height={320}
+                      className="rounded-xl w-72 h-72 sm:w-80 sm:h-80"
+                      priority
+                    />
+                  )}
                 </div>
                 
                 <div className="space-y-3 sm:space-y-4">

@@ -49,7 +49,7 @@ interface ApiUser {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { logout } = useAuth()
+  const { signOut } = useAuth()
   const [trips, setTrips] = useState<Trip[]>([]) // Will be populated from API later
   const [users, setUsers] = useState<User[]>([]) // Global users list
   const [isLoading, setIsLoading] = useState(true) // Loading state for initial data fetch
@@ -69,7 +69,6 @@ export default function DashboardPage() {
     description?: string
     startDate?: string
     endDate?: string
-    createdBy: string
   }) => {
     try {
       const response = await fetch('/api/trips', {
@@ -297,7 +296,7 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      await logout()
+      await signOut()
       router.push('/login')
     } catch (error) {
       console.error("Error logging out:", error)
@@ -699,7 +698,6 @@ export default function DashboardPage() {
       <CreateTripModal
         isOpen={isCreateTripModalOpen}
         onClose={() => setIsCreateTripModalOpen(false)}
-        users={users}
         onCreateTrip={handleCreateTrip}
       />
 

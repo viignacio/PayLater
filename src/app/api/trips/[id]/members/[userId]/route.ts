@@ -1,51 +1,22 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
-  try {
-    const { id, userId } = await params
+  const { id, userId } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Check if trip member exists
-    const tripMember = await prisma.tripMember.findFirst({
-      where: {
-        tripId: id,
-        userId: userId
-      }
-    })
+  const { error } = await supabase
+    .from('trip_members')
+    .delete()
+    .eq('trip_id', id)
+    .eq('user_id', userId)
 
-    if (!tripMember) {
-      return NextResponse.json(
-        { error: "User is not a member of this trip" },
-        { status: 404 }
-      )
-    }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Don't allow removing the creator
-    if (tripMember.role === 'CREATOR') {
-      return NextResponse.json(
-        { error: "Cannot remove the trip creator" },
-        { status: 400 }
-      )
-    }
-
-    // Remove user from trip
-    await prisma.tripMember.delete({
-      where: {
-        id: tripMember.id
-      }
-    })
-
-    return NextResponse.json({
-      message: "User removed from trip successfully"
-    })
-  } catch (error) {
-    console.error("Error removing user from trip:", error)
-    return NextResponse.json(
-      { error: "Failed to remove user from trip" },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json({ message: 'Member removed from trip' })
 }
