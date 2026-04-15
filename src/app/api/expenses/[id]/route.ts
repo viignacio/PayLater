@@ -1,24 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { syncUser } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { expenses, expenseSplits } from '@/lib/db/schema'
 import { toExpense } from '@/lib/transformers'
-import type { Database } from '@/lib/database.types'
+import { eq } from 'drizzle-orm'
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { data, error } = await supabase
-    .from('expenses')
-    .select(`*, payer:profiles!paid_by(*), splits:expense_splits(*, user:profiles(*))`)
-    .eq('id', id)
-    .single()
+  const data = await db.query.expenses.findFirst({
+    where: eq(expenses.id, id),
+    with: {
+      payer: true,
+      splits: {
+        with: {
+          user: true,
+        },
+      },
+    },
+  })
 
-  if (error) return NextResponse.json({ error: 'Expense not found' }, { status: 404 })
+  if (!data) {
+    return NextResponse.json({ error: 'Expense not found' }, { status: 404 })
+  }
 
   return NextResponse.json({ expense: toExpense(data) })
 }
@@ -28,9 +39,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body: {
     title?: string
@@ -47,44 +59,56 @@ export async function PUT(
     return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
   }
 
-  const updates: Database['public']['Tables']['expenses']['Update'] = {
-    updated_at: new Date().toISOString(),
+  try {
+    const fullExpense = await db.transaction(async (tx) => {
+      // Update expense
+      await tx.update(expenses)
+        .set({
+          ...(title && { title: title.trim() }),
+          ...(description !== undefined && { description: description?.trim() ?? null }),
+          ...(amount && { amount: parseFloat(String(amount)).toString() }),
+          ...(date && { date: new Date(date) }),
+          ...(paidBy && { paidBy }),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ...(splitType && { splitType: splitType as any }),
+          updatedAt: new Date(),
+        })
+        .where(eq(expenses.id, id))
+
+      // Update splits if provided
+      if (splits.length > 0) {
+        await tx.delete(expenseSplits).where(eq(expenseSplits.expenseId, id))
+        await tx.insert(expenseSplits).values(
+          splits.map((s) => ({
+            expenseId: id,
+            userId: s.userId,
+            amount: parseFloat(s.amount.toString()).toString(),
+          }))
+        )
+      }
+
+      // Fetch full expense
+      return await tx.query.expenses.findFirst({
+        where: eq(expenses.id, id),
+        with: {
+          payer: true,
+          splits: {
+            with: {
+              user: true,
+            },
+          },
+        },
+      })
+    })
+
+    return NextResponse.json({ 
+      expense: toExpense(fullExpense), 
+      message: 'Expense updated successfully' 
+    })
+  } catch (error: any) {
+    console.error('Expense update error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  if (title) updates.title = title.trim()
-  if (description !== undefined) updates.description = description?.trim() ?? null
-  if (amount) updates.amount = parseFloat(String(amount))
-  if (date) updates.date = date
-  if (paidBy) updates.paid_by = paidBy
-  if (splitType) updates.split_type = splitType as Database['public']['Enums']['split_type']
-
-  const { error: updateError } = await supabase
-    .from('expenses')
-    .update(updates)
-    .eq('id', id)
-
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
-
-  if (splits.length > 0) {
-    await supabase.from('expense_splits').delete().eq('expense_id', id)
-    const { error: splitsError } = await supabase
-      .from('expense_splits')
-      .insert(splits.map((s) => ({
-        expense_id: id,
-        user_id: s.userId,
-        amount: parseFloat(s.amount.toString()),
-      })))
-    if (splitsError) return NextResponse.json({ error: splitsError.message }, { status: 500 })
-  }
-
-  const { data, error: fetchError } = await supabase
-    .from('expenses')
-    .select(`*, payer:profiles!paid_by(*), splits:expense_splits(*, user:profiles(*))`)
-    .eq('id', id)
-    .single()
-
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
-
-  return NextResponse.json({ expense: toExpense(data), message: 'Expense updated successfully' })
 }
 
 export async function DELETE(
@@ -92,12 +116,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { error } = await supabase.from('expenses').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await db.delete(expenses).where(eq(expenses.id, id))
 
   return NextResponse.json({ message: 'Expense deleted successfully' })
 }

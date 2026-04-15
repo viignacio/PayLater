@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { syncUser } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { tripInvites, tripMembers, trips } from '@/lib/db/schema'
+import { eq, and } from 'drizzle-orm'
 
 export async function POST(
   _request: NextRequest,
@@ -7,37 +10,32 @@ export async function POST(
 ) {
   const { token } = await params
 
-  // Use service client to look up invite token (bypasses RLS)
-  const serviceSupabase = await createServiceClient()
-  const { data: invite, error: inviteError } = await serviceSupabase
-    .from('trip_invites')
-    .select('*')
-    .eq('token', token)
-    .eq('status', 'PENDING')
-    .single()
+  const invite = await db.query.tripInvites.findFirst({
+    where: and(
+      eq(tripInvites.token, token),
+      eq(tripInvites.status, 'PENDING')
+    ),
+  })
 
-  if (inviteError || !invite) {
+  if (!invite) {
     return NextResponse.json({ error: 'Invalid or expired invite' }, { status: 404 })
   }
 
-  if (new Date(invite.expires_at) < new Date()) {
-    await serviceSupabase
-      .from('trip_invites')
-      .update({ status: 'EXPIRED' })
-      .eq('id', invite.id)
+  if (new Date(invite.expiresAt) < new Date()) {
+    await db.update(tripInvites)
+      .set({ status: 'EXPIRED' })
+      .where(eq(tripInvites.id, invite.id))
     return NextResponse.json({ error: 'This invite has expired' }, { status: 410 })
   }
 
   // Require the user to be authenticated before accepting
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    // Return invite info so the login page can redirect back after auth
+  const userId = await syncUser()
+  if (!userId) {
     return NextResponse.json(
       {
         error: 'Authentication required',
         code: 'AUTH_REQUIRED',
-        tripId: invite.trip_id,
+        tripId: invite.tripId,
         email: invite.email,
       },
       { status: 401 }
@@ -45,21 +43,25 @@ export async function POST(
   }
 
   // Add user to trip
-  const { error: memberError } = await serviceSupabase
-    .from('trip_members')
-    .insert({ trip_id: invite.trip_id, user_id: user.id, role: invite.role })
-
-  if (memberError && memberError.code !== '23505') {
-    return NextResponse.json({ error: memberError.message }, { status: 500 })
+  try {
+    await db.insert(tripMembers).values({
+      tripId: invite.tripId,
+      userId: userId,
+      role: invite.role,
+    })
+  } catch (error: any) {
+    // Ignore duplicate member errors (code 23505)
+    if (error.code !== '23505') {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
   }
 
   // Mark invite as accepted
-  await serviceSupabase
-    .from('trip_invites')
-    .update({ status: 'ACCEPTED' })
-    .eq('id', invite.id)
+  await db.update(tripInvites)
+    .set({ status: 'ACCEPTED' })
+    .where(eq(tripInvites.id, invite.id))
 
-  return NextResponse.json({ tripId: invite.trip_id, message: 'Invite accepted' })
+  return NextResponse.json({ tripId: invite.tripId, message: 'Invite accepted' })
 }
 
 export async function GET(
@@ -67,33 +69,34 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params
-  const serviceSupabase = await createServiceClient()
 
-  const { data: invite, error } = await serviceSupabase
-    .from('trip_invites')
-    .select('*')
-    .eq('token', token)
-    .eq('status', 'PENDING')
-    .single()
+  const invite = await db.query.tripInvites.findFirst({
+    where: and(
+      eq(tripInvites.token, token),
+      eq(tripInvites.status, 'PENDING')
+    ),
+  })
 
-  if (error || !invite) {
+  if (!invite) {
     return NextResponse.json({ error: 'Invalid or expired invite' }, { status: 404 })
   }
 
-  if (new Date(invite.expires_at) < new Date()) {
+  if (new Date(invite.expiresAt) < new Date()) {
     return NextResponse.json({ error: 'This invite has expired' }, { status: 410 })
   }
 
-  const { data: trip } = await serviceSupabase
-    .from('trips')
-    .select('id, name')
-    .eq('id', invite.trip_id)
-    .single()
+  const trip = await db.query.trips.findFirst({
+    where: eq(trips.id, invite.tripId),
+    columns: {
+      id: true,
+      name: true,
+    },
+  })
 
   return NextResponse.json({
-    tripId: invite.trip_id,
+    tripId: invite.tripId,
     tripName: trip?.name ?? '',
     email: invite.email,
-    expiresAt: invite.expires_at,
+    expiresAt: invite.expiresAt,
   })
 }
