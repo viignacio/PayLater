@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input"
 import { X, Upload, QrCode, DollarSign, CreditCard, Camera, Edit3, ChevronDown, ChevronUp } from "lucide-react"
 import Image from "next/image"
 import { formatCurrency } from "@/lib/utils"
-import { createClient } from '@/lib/supabase/client'
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll"
+import { useUploadThing } from "@/lib/uploadthing"
 
 interface User {
   id: string
@@ -91,18 +91,34 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
     }
   }, [isOpen])
 
-  // Generate signed URL for QR code from Supabase Storage
+  // Set qrUrl when user.qrCode changes
   useEffect(() => {
-    const fetchQrUrl = async () => {
-      if (!user?.qrCode) { setQrUrl(null); return }
-      const supabase = createClient()
-      const { data } = await supabase.storage
-        .from('qr-codes')
-        .createSignedUrl(user.qrCode, 3600)
-      setQrUrl(data?.signedUrl ?? null)
+    if (user?.qrCode) {
+      setQrUrl(user.qrCode)
+    } else {
+      setQrUrl(null)
     }
-    fetchQrUrl()
   }, [user?.qrCode])
+
+  const { startUpload } = useUploadThing("qrCode", {
+    onClientUploadComplete: async (res) => {
+      if (res?.[0]) {
+        // Save the storage path to the profile
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qrCode: res[0].url }),
+        })
+        await onUpdateUser(user!.id, { qrCode: res[0].url })
+      }
+      setIsUploading(false)
+    },
+    onUploadError: (error) => {
+      console.error("Upload error:", error)
+      alert(`Failed to upload QR code: ${error.message}`)
+      setIsUploading(false)
+    },
+  })
 
   if (!isOpen || !user) return null
 
@@ -135,39 +151,7 @@ export function UserProfileModal({ isOpen, onClose, user, onUpdateUser }: UserPr
     }
 
     setIsUploading(true)
-    try {
-      await handleQrUpload(file)
-    } catch (error) {
-      console.error('Error uploading QR code:', error)
-      alert('Failed to upload QR code')
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  const handleQrUpload = async (file: File) => {
-    const supabase = createClient()
-    const { data: { user: authUser } } = await supabase.auth.getUser()
-    if (!authUser) return
-
-    const ext = file.name.split('.').pop()
-    const path = `${authUser.id}/qr.${ext}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('qr-codes')
-      .upload(path, file, { upsert: true })
-
-    if (uploadError) {
-      console.error('QR upload failed:', uploadError.message)
-      return
-    }
-
-    // Save the storage path to the profile
-    await fetch('/api/users/qr', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ qrCode: path }),
-    })
+    await startUpload([file])
   }
 
   const handleRemoveQRCode = async () => {
