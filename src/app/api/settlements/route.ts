@@ -1,35 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { syncUser } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { settlements } from '@/lib/db/schema'
 import { toSettlement } from '@/lib/transformers'
+import { desc, eq } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const tripId = searchParams.get('tripId')
-  if (!tripId) return NextResponse.json({ error: 'Trip ID is required' }, { status: 400 })
+  if (!tripId) {
+    return NextResponse.json({ error: 'Trip ID is required' }, { status: 400 })
+  }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { data, error } = await supabase
-    .from('settlements')
-    .select(`
-      *,
-      payer:profiles!paid_by(*),
-      receiver:profiles!paid_to(*)
-    `)
-    .eq('trip_id', tripId)
-    .order('created_at', { ascending: false })
+  const results = await db.query.settlements.findMany({
+    where: eq(settlements.tripId, tripId),
+    with: {
+      payer: true,
+      receiver: true,
+    },
+    orderBy: [desc(settlements.createdAt)],
+  })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({ settlements: (data ?? []).map(toSettlement) })
+  return NextResponse.json({ settlements: results.map(toSettlement) })
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await request.json()
   const { tripId, paidBy, paidTo, amount, currency = 'PHP', note } = body
@@ -41,7 +45,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  if (parseFloat(amount) <= 0) {
+  const parsedAmount = parseFloat(amount)
+  if (parsedAmount <= 0) {
     return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
   }
 
@@ -49,35 +54,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payer and receiver cannot be the same' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
-    .from('settlements')
-    .insert({
-      trip_id: tripId,
-      paid_by: paidBy,
-      paid_to: paidTo,
-      amount: parseFloat(amount),
-      currency,
-      note: note ?? null,
-    })
-    .select(`*, payer:profiles!paid_by(*), receiver:profiles!paid_to(*)`)
-    .single()
+  const [newSettlement] = await db.insert(settlements).values({
+    tripId,
+    paidBy,
+    paidTo,
+    amount: parsedAmount.toString(),
+    currency,
+    note: note ?? null,
+  }).returning()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!newSettlement) {
+    return NextResponse.json({ error: 'Failed to record settlement' }, { status: 500 })
+  }
 
-  return NextResponse.json({ settlement: toSettlement(data), message: 'Settlement recorded successfully' })
+  const fullSettlement = await db.query.settlements.findFirst({
+    where: eq(settlements.id, newSettlement.id),
+    with: {
+      payer: true,
+      receiver: true,
+    },
+  })
+
+  return NextResponse.json({ 
+    settlement: toSettlement(fullSettlement), 
+    message: 'Settlement recorded successfully' 
+  })
 }
 
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const settlementId = searchParams.get('id')
-  if (!settlementId) return NextResponse.json({ error: 'Settlement ID is required' }, { status: 400 })
+  if (!settlementId) {
+    return NextResponse.json({ error: 'Settlement ID is required' }, { status: 400 })
+  }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { error } = await supabase.from('settlements').delete().eq('id', settlementId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await db.delete(settlements).where(eq(settlements.id, settlementId))
 
   return NextResponse.json({ message: 'Settlement deleted' })
 }

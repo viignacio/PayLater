@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { syncUser } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { tripInvites } from '@/lib/db/schema'
 import { toTripInvite } from '@/lib/transformers'
 import { randomBytes } from 'crypto'
+import { desc, eq, and } from 'drizzle-orm'
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await request.json()
   const { tripId, email, role = 'MEMBER' } = body
@@ -16,35 +20,32 @@ export async function POST(request: NextRequest) {
   }
 
   const token = randomBytes(32).toString('hex')
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-  const { data, error } = await supabase
-    .from('trip_invites')
-    .insert({
-      trip_id: tripId,
-      invited_by: user.id,
+  try {
+    const [newInvite] = await db.insert(tripInvites).values({
+      tripId: tripId,
+      invitedBy: userId,
       email: email.toLowerCase().trim(),
-      role,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      role: role as any,
       token,
-      expires_at: expiresAt,
-    })
-    .select()
-    .single()
+      expiresAt: expiresAt,
+    }).returning()
 
-  if (error) {
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/invite?token=${token}`
+
+    return NextResponse.json({
+      invite: toTripInvite(newInvite),
+      inviteUrl,
+      message: 'Invite created. Share this link with the invitee.',
+    })
+  } catch (error: any) {
     if (error.code === '23505') {
       return NextResponse.json({ error: 'This email has already been invited to this trip' }, { status: 400 })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/invite?token=${token}`
-
-  return NextResponse.json({
-    invite: toTripInvite(data),
-    inviteUrl,
-    message: 'Invite created. Share this link with the invitee.',
-  })
 }
 
 export async function GET(request: NextRequest) {
@@ -52,17 +53,15 @@ export async function GET(request: NextRequest) {
   const tripId = searchParams.get('tripId')
   if (!tripId) return NextResponse.json({ error: 'Trip ID is required' }, { status: 400 })
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { data, error } = await supabase
-    .from('trip_invites')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('created_at', { ascending: false })
+  const results = await db.query.tripInvites.findMany({
+    where: eq(tripInvites.tripId, tripId),
+    orderBy: [desc(tripInvites.createdAt)],
+  })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({ invites: (data ?? []).map(toTripInvite) })
+  return NextResponse.json({ invites: results.map(toTripInvite) })
 }

@@ -1,32 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { auth, syncUser } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { trips, tripMembers } from '@/lib/db/schema'
 import { toTrip } from '@/lib/transformers'
+import { desc, eq } from 'drizzle-orm'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { data, error } = await supabase
-    .from('trips')
-    .select(`
-      *,
-      creator:profiles!created_by(*),
-      members:trip_members(*, user:profiles(*)),
-      expenses(*)
-    `)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
+  // Fetch trips where user is a member
+  const results = await db.query.trips.findMany({
+    where: eq(trips.isActive, true),
+    with: {
+      creator: true,
+      members: {
+        with: {
+          user: true,
+        },
+      },
+      expenses: true,
+    },
+    orderBy: [desc(trips.createdAt)],
+  })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Filter trips in application logic if RLS-equivalent filtering is needed
+  // Since we are moving away from DB RLS for now and using app logic.
+  // Actually, we should filter by membership in the query.
+  const userTrips = results.filter(trip => 
+    trip.members.some(member => member.userId === userId)
+  )
 
-  return NextResponse.json({ trips: (data ?? []).map(toTrip) })
+  return NextResponse.json({ trips: userTrips.map(toTrip) })
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await request.json()
   const { name, description, startDate, endDate } = body
@@ -35,37 +49,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Trip name is required' }, { status: 400 })
   }
 
-  const { data: trip, error: tripError } = await supabase
-    .from('trips')
-    .insert({
-      name: name.trim(),
-      description: description?.trim() ?? null,
-      start_date: startDate ?? null,
-      end_date: endDate ?? null,
-      created_by: user.id,
-    })
-    .select()
-    .single()
+  // Create trip
+  const [newTrip] = await db.insert(trips).values({
+    name: name.trim(),
+    description: description?.trim() ?? null,
+    startDate: startDate ? new Date(startDate) : null,
+    endDate: endDate ? new Date(endDate) : null,
+    createdBy: userId,
+  }).returning()
 
-  if (tripError) return NextResponse.json({ error: tripError.message }, { status: 500 })
+  if (!newTrip) {
+    return NextResponse.json({ error: 'Failed to create trip' }, { status: 500 })
+  }
 
-  const { error: memberError } = await supabase
-    .from('trip_members')
-    .insert({ trip_id: trip.id, user_id: user.id, role: 'CREATOR' })
+  // Add creator as member
+  await db.insert(tripMembers).values({
+    tripId: newTrip.id,
+    userId: userId,
+    role: 'CREATOR',
+  })
 
-  if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
+  // Fetch full trip with relations
+  const fullTrip = await db.query.trips.findFirst({
+    where: eq(trips.id, newTrip.id),
+    with: {
+      creator: true,
+      members: {
+        with: {
+          user: true,
+        },
+      },
+    },
+  })
 
-  const { data: fullTrip, error: fetchError } = await supabase
-    .from('trips')
-    .select(`
-      *,
-      creator:profiles!created_by(*),
-      members:trip_members(*, user:profiles(*))
-    `)
-    .eq('id', trip.id)
-    .single()
-
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
-
-  return NextResponse.json({ trip: toTrip(fullTrip), message: 'Trip created successfully' })
+  return NextResponse.json({ 
+    trip: toTrip(fullTrip), 
+    message: 'Trip created successfully' 
+  })
 }

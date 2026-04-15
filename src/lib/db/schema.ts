@@ -114,3 +114,20 @@ export const tripMembersRelations = relations(tripMembers, ({ one }) => ({
   trip: one(trips, { fields: [tripMembers.tripId], references: [trips.id] }),
   user: one(profiles, { fields: [tripMembers.userId], references: [profiles.id] }),
 }))
+
+export const expensesRelations = relations(expenses, ({ one, many }) => ({
+  trip: one(trips, { fields: [expenses.tripId], references: [trips.id] }),
+  payer: one(profiles, { fields: [expenses.paidBy], references: [profiles.id] }),
+  splits: many(expenseSplits),
+}))
+
+export const expenseSplitsRelations = relations(expenseSplits, ({ one }) => ({
+  expense: one(expenses, { fields: [expenseSplits.expenseId], references: [expenses.id] }),
+  user: one(profiles, { fields: [expenseSplits.userId], references: [profiles.id] }),
+}))
+
+export const settlementsRelations = relations(settlements, ({ one }) => ({
+  trip: one(trips, { fields: [settlements.tripId], references: [trips.id] }),
+  payer: one(profiles, { fields: [settlements.paidBy], references: [profiles.id], relationName: 'payer' }),
+  receiver: one(profiles, { fields: [settlements.paidTo], references: [profiles.id], relationName: 'receiver' }),
+}))

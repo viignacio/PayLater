@@ -1,14 +1,14 @@
-// Transforms Supabase row shapes (snake_case) to the camelCase shapes
-// consumed by UI components and the balance calculator.
+// Transformers for the UI to consume.
+// Now updated to work with Drizzle's camelCase return objects.
 
 export interface Profile {
   id: string
   name: string
   avatar: string | null
   qrCode: string | null
-  deletedAt: string | null
-  createdAt: string
-  updatedAt: string
+  deletedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface TripMember {
@@ -16,7 +16,7 @@ export interface TripMember {
   tripId: string
   userId: string
   role: 'CREATOR' | 'ADMIN' | 'MEMBER'
-  joinedAt: string
+  joinedAt: Date
   user?: Profile
 }
 
@@ -25,12 +25,12 @@ export interface Trip {
   name: string
   description: string | null
   currency: string
-  startDate: string | null
-  endDate: string | null
+  startDate: Date | null
+  endDate: Date | null
   isActive: boolean
   createdBy: string
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  updatedAt: Date
   creator?: Profile
   members?: TripMember[]
   expenses?: Expense[]
@@ -41,7 +41,7 @@ export interface ExpenseSplit {
   expenseId: string
   userId: string
   amount: number
-  createdAt: string
+  createdAt: Date
   user?: Profile
 }
 
@@ -52,13 +52,13 @@ export interface Expense {
   description: string | null
   amount: number
   currency: string
-  date: string
+  date: Date
   paidBy: string
   splitType: string
   isSettled: boolean
   receiptUrl: string | null
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  updatedAt: Date
   payer?: Profile
   splits?: ExpenseSplit[]
 }
@@ -71,7 +71,7 @@ export interface Settlement {
   amount: number
   currency: string
   note: string | null
-  createdAt: string
+  createdAt: Date
   payer?: Profile
   receiver?: Profile
 }
@@ -84,20 +84,21 @@ export interface TripInvite {
   role: 'CREATOR' | 'ADMIN' | 'MEMBER'
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED'
   token: string
-  expiresAt: string
-  createdAt: string
+  expiresAt: Date
+  createdAt: Date
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toProfile(row: any): Profile {
+  if (!row) return row;
   return {
     id: row.id,
     name: row.name,
     avatar: row.avatar ?? null,
-    qrCode: row.qr_code ?? null,
-    deletedAt: row.deleted_at ?? null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    qrCode: row.qrCode ?? null,
+    deletedAt: row.deletedAt ? new Date(row.deletedAt) : null,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
   }
 }
 
@@ -105,10 +106,10 @@ export function toProfile(row: any): Profile {
 export function toTripMember(row: any): TripMember {
   return {
     id: row.id,
-    tripId: row.trip_id,
-    userId: row.user_id,
+    tripId: row.tripId,
+    userId: row.userId,
     role: row.role,
-    joinedAt: row.joined_at,
+    joinedAt: new Date(row.joinedAt),
     user: row.user ? toProfile(row.user) : undefined,
   }
 }
@@ -117,10 +118,10 @@ export function toTripMember(row: any): TripMember {
 export function toExpenseSplit(row: any): ExpenseSplit {
   return {
     id: row.id,
-    expenseId: row.expense_id,
-    userId: row.user_id,
+    expenseId: row.expenseId,
+    userId: row.userId,
     amount: Number(row.amount),
-    createdAt: row.created_at,
+    createdAt: new Date(row.createdAt),
     user: row.user ? toProfile(row.user) : undefined,
   }
 }
@@ -129,18 +130,18 @@ export function toExpenseSplit(row: any): ExpenseSplit {
 export function toExpense(row: any): Expense {
   return {
     id: row.id,
-    tripId: row.trip_id,
+    tripId: row.tripId,
     title: row.title,
     description: row.description ?? null,
     amount: Number(row.amount),
     currency: row.currency,
-    date: row.date,
-    paidBy: row.paid_by,
-    splitType: row.split_type,
-    isSettled: row.is_settled,
-    receiptUrl: row.receipt_url ?? null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    date: new Date(row.date),
+    paidBy: row.paidBy,
+    splitType: row.splitType,
+    isSettled: row.isSettled,
+    receiptUrl: row.receiptUrl ?? null,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
     payer: row.payer ? toProfile(row.payer) : undefined,
     splits: row.splits ? row.splits.map(toExpenseSplit) : undefined,
   }
@@ -153,12 +154,12 @@ export function toTrip(row: any): Trip {
     name: row.name,
     description: row.description ?? null,
     currency: row.currency,
-    startDate: row.start_date ?? null,
-    endDate: row.end_date ?? null,
-    isActive: row.is_active,
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    startDate: row.startDate ? new Date(row.startDate) : null,
+    endDate: row.endDate ? new Date(row.endDate) : null,
+    isActive: row.isActive,
+    createdBy: row.createdBy,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
     creator: row.creator ? toProfile(row.creator) : undefined,
     members: row.members ? row.members.map(toTripMember) : undefined,
     expenses: row.expenses ? row.expenses.map(toExpense) : undefined,
@@ -169,13 +170,13 @@ export function toTrip(row: any): Trip {
 export function toSettlement(row: any): Settlement {
   return {
     id: row.id,
-    tripId: row.trip_id,
-    paidBy: row.paid_by,
-    paidTo: row.paid_to,
+    tripId: row.tripId,
+    paidBy: row.paidBy,
+    paidTo: row.paidTo,
     amount: Number(row.amount),
     currency: row.currency,
     note: row.note ?? null,
-    createdAt: row.created_at,
+    createdAt: new Date(row.createdAt),
     payer: row.payer ? toProfile(row.payer) : undefined,
     receiver: row.receiver ? toProfile(row.receiver) : undefined,
   }
@@ -185,13 +186,13 @@ export function toSettlement(row: any): Settlement {
 export function toTripInvite(row: any): TripInvite {
   return {
     id: row.id,
-    tripId: row.trip_id,
-    invitedBy: row.invited_by,
+    tripId: row.tripId,
+    invitedBy: row.invitedBy,
     email: row.email,
     role: row.role,
     status: row.status,
     token: row.token,
-    expiresAt: row.expires_at,
-    createdAt: row.created_at,
+    expiresAt: new Date(row.expiresAt),
+    createdAt: new Date(row.createdAt),
   }
 }

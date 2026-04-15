@@ -1,71 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { syncUser } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { profiles } from '@/lib/db/schema'
 import { toProfile } from '@/lib/transformers'
+import { desc, eq } from 'drizzle-orm'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const results = await db.query.profiles.findMany({
+    orderBy: [desc(profiles.createdAt)],
+  })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const users = (data ?? []).map(row => ({
+  const users = results.map(row => ({
     ...toProfile(row),
-    name: row.deleted_at ? `${row.name} (Deleted User)` : row.name,
+    name: row.deletedAt ? `${row.name} (Deleted User)` : row.name,
   }))
 
   return NextResponse.json({ users })
 }
 
 export async function PUT(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await request.json()
   const { id, name, avatar, qrCode } = body
 
-  const targetId = id || user.id
+  const targetId = id || userId
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
+  await db.update(profiles)
+    .set({
       ...(name && { name: name.trim() }),
       ...(avatar !== undefined && { avatar }),
-      ...(qrCode !== undefined && { qr_code: qrCode }),
-      updated_at: new Date().toISOString(),
+      ...(qrCode !== undefined && { qrCode }),
+      updatedAt: new Date(),
     })
-    .eq('id', targetId)
-    .select()
-    .single()
+    .where(eq(profiles.id, targetId))
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const updatedProfile = await db.query.profiles.findFirst({
+    where: eq(profiles.id, targetId),
+  })
 
-  return NextResponse.json({ user: toProfile(data), message: 'Profile updated successfully' })
+  return NextResponse.json({ 
+    user: toProfile(updatedProfile), 
+    message: 'Profile updated successfully' 
+  })
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await syncUser()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('id')
+  const targetUserId = searchParams.get('id')
 
-  if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
-  if (userId !== user.id) return NextResponse.json({ error: 'Can only delete your own account' }, { status: 403 })
+  if (!targetUserId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+  if (targetUserId !== userId) return NextResponse.json({ error: 'Can only delete your own account' }, { status: 403 })
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq('id', userId)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await db.update(profiles)
+    .set({ 
+      deletedAt: new Date(), 
+      updatedAt: new Date() 
+    })
+    .where(eq(profiles.id, targetUserId))
 
   return NextResponse.json({ message: 'User deleted successfully' })
 }
