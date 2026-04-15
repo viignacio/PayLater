@@ -53,6 +53,8 @@ DEPLOYMENT_GUIDE.md
 .agent
 .claude
 docs
+docs/*
 .worktrees
+
 # clerk configuration (can include secrets)
 /.clerk/
