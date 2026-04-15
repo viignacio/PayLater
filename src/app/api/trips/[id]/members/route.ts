@@ -32,7 +32,7 @@ export async function POST(
 
     return NextResponse.json({ message: 'User added to trip successfully', member: toTripMember(memberWithProfile) })
   } catch (error) {
-    const err = error as any;
+    const err = error as { code?: string; message?: string };
     if (err.code === '23505') {
       return NextResponse.json({ error: 'User is already a member of this trip' }, { status: 400 })
     }

@@ -50,7 +50,7 @@ export async function POST(
       role: invite.role,
     })
   } catch (error) {
-    const err = error as any;
+    const err = error as { code?: string; message?: string };
     // Ignore duplicate member errors (code 23505)
     if (err.code !== '23505') {
       return NextResponse.json({ error: err.message }, { status: 500 })

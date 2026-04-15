@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       message: 'Invite created. Share this link with the invitee.',
     })
   } catch (error) {
-    const err = error as any;
+    const err = error as { code?: string; message?: string };
     if (err.code === '23505') {
       return NextResponse.json({ error: 'This email has already been invited to this trip' }, { status: 400 })
     }
