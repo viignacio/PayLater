@@ -35,19 +35,6 @@ export default function RootLayout({
       <html lang="en">
         <body className={inter.className}>
           <ErrorBoundary>
-            <header className="flex justify-end p-4 gap-4 bg-white/50 backdrop-blur-md border-b">
-              <Show when="signed-out">
-                <SignInButton mode="modal">
-                  <button className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">Sign In</button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <button className="text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">Sign Up</button>
-                </SignUpButton>
-              </Show>
-              <Show when="signed-in">
-                <UserButton />
-              </Show>
-            </header>
             <main>
               {children}
             </main>

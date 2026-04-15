@@ -42,5 +42,24 @@
 | Task 2: Refactor `dashboard/page.tsx` to use new components | [ ] |
 | Task 3: Remove global header from `layout.tsx` | [ ] |
 | Task 4: Implement new public `page.tsx` (Homepage) | [ ] |
-| Task 5: Update `middleware.ts` for route protection | [ ] |
-| Task 6: Verify authentication and responsiveness | [ ] |
+| Task 5: Update `middleware.ts` for route protection | [x] |
+| Task 6: Verify authentication and responsiveness | [x] |
+
+# Homepage Redirect & Modal Auth Implementation
+
+| Task | Status |
+| :--- | :--- |
+| **Implementation Tasks** | [/] |
+| Task 1: Update `middleware.ts` for homepage redirect | [ ] |
+| Task 2: Trigger Sign-In Modal on Homepage | [ ] |
+| Task 3: Cleanup redundant `/login` page | [ ] |
+| Task 4: Verify Auth Flow and Modals | [x] |
+
+# Auth Flow Refinement Implementation
+
+| Task | Status |
+| :--- | :--- |
+| **Implementation Tasks** | [/] |
+| Task 1: Fix Post-Login Redirection to `/dashboard` | [ ] |
+| Task 2: Conditional Homepage Buttons (Dashboard vs Sign-In) | [ ] |
+| Task 3: Verify Flow Redirection and UI Swap | [ ] |

@@ -9,6 +9,8 @@ import { Loading } from "@/components/ui/loading"
 import { useUser, useClerk } from "@clerk/nextjs"
 import dynamic from "next/dynamic"
 import { useClickOutside } from "@/hooks/use-click-outside"
+import { AppHeader } from "@/components/layout/app-header"
+import { AnimatedBackground } from "@/components/layout/animated-background"
 
 const CreateTripModal = dynamic(() => import("@/components/trip/create-trip-modal").then(mod => mod.CreateTripModal))
 const EditTripModal = dynamic(() => import("@/components/trip/edit-trip-modal").then(mod => mod.EditTripModal))
@@ -63,9 +65,7 @@ export default function DashboardPage() {
   const [isManageUsersModalOpen, setIsManageUsersModalOpen] = useState(false)
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isManageDropdownOpen, setIsManageDropdownOpen] = useState(false)
-  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const manageDropdownRef = useRef<HTMLDivElement>(null)
 
   const handleCreateTrip = async (tripData: {
@@ -314,8 +314,7 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      await signOut()
-      router.push('/login')
+      await signOut({ redirectUrl: '/' })
     } catch (error) {
       console.error("Error logging out:", error)
     }
@@ -372,182 +371,121 @@ export default function DashboardPage() {
   }, [])
 
   // Use hooks for outside clicks
-  useClickOutside(mobileMenuRef, () => setIsMobileMenuOpen(false))
   useClickOutside(manageDropdownRef, () => setIsManageDropdownOpen(false))
 
   return (
     <>
-      {/* Enhanced Header */}
-      <header id="dashboard-header" className="sticky top-0 z-50 glass border-b border-white/20 shadow-medium" suppressHydrationWarning>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16 sm:h-20">
-              <div className="flex items-center min-w-0 flex-1">
-                <div className="relative group mr-3 sm:mr-4">
-                  <Image src="/paylater.png" alt="PayLater Logo" width={32} height={32} priority className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-                </div>
-                <div className="flex flex-col">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent truncate">
-                    PayLater
-                  </h1>
-                  <p className="text-xs sm:text-sm text-gray-500 font-medium hidden sm:block">
-                    Split expenses with friends
-                  </p>
-                </div>
-              </div>
+      <AppHeader
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenMyProfile}
+              className="bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+            >
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </Button>
+
+            <div className="relative" ref={manageDropdownRef}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsManageDropdownOpen(!isManageDropdownOpen)}
+                className="bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Manage
+                <ChevronDown className={`ml-2 h-4 w-4 transition-transform duration-200 ${isManageDropdownOpen ? 'rotate-180' : ''}`} />
+              </Button>
               
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                {/* Mobile Menu Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="md:hidden h-8 w-8 sm:h-10 sm:w-10 text-gray-700 hover:text-gray-900 hover:bg-gray-200/50"
-                >
-                  {isMobileMenuOpen ? (
-                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                  ) : (
-                    <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-                  )}
-                </Button>
-                
-                {/* Desktop Menu Items */}
-                <div className="hidden md:flex items-center space-x-3">
-                  {/* Profile Avatar Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenMyProfile}
-                    className="bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+              {/* Manage Dropdown */}
+              {isManageDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 py-2 z-50">
+                  <button
+                    onClick={() => {
+                      setIsCreateTripModalOpen(true)
+                      setIsManageDropdownOpen(false)
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-white/50 transition-colors duration-200 flex items-center"
                   >
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Button>
-
-                  <div className="relative" ref={manageDropdownRef}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsManageDropdownOpen(!isManageDropdownOpen)}
-                      className="bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      Manage
-                      <ChevronDown className={`ml-2 h-4 w-4 transition-transform duration-200 ${isManageDropdownOpen ? 'rotate-180' : ''}`} />
-                    </Button>
-                    
-                    {/* Manage Dropdown */}
-                    {isManageDropdownOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 py-2 z-50">
-                        <button
-                          onClick={() => {
-                            setIsCreateTripModalOpen(true)
-                            setIsManageDropdownOpen(false)
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-white/50 transition-colors duration-200 flex items-center"
-                        >
-                          <Plus className="mr-3 h-4 w-4 text-indigo-600" />
-                          <div>
-                            <div className="font-medium text-gray-900">Create New Trip</div>
-                            <div className="text-sm text-gray-500">Start a new trip</div>
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsManageUsersModalOpen(true)
-                            setIsManageDropdownOpen(false)
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-white/50 transition-colors duration-200 flex items-center"
-                        >
-                          <Users className="mr-3 h-4 w-4 text-green-600" />
-                          <div>
-                            <div className="font-medium text-gray-900">Manage Group</div>
-                            <div className="text-sm text-gray-500">Add or remove members</div>
-                          </div>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Logout Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleLogout}
-                    className="bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-200"
+                    <Plus className="mr-3 h-4 w-4 text-indigo-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">Create New Trip</div>
+                      <div className="text-sm text-gray-500">Start a new trip</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsManageUsersModalOpen(true)
+                      setIsManageDropdownOpen(false)
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-white/50 transition-colors duration-200 flex items-center"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </Button>
+                    <Users className="mr-3 h-4 w-4 text-green-600" />
+                    <div>
+                      <div className="font-medium text-gray-900">Manage Group</div>
+                      <div className="text-sm text-gray-500">Add or remove members</div>
+                    </div>
+                  </button>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-        </header>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-200"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </>
+        }
+        mobileActions={
+          <>
+            <Button
+              variant="outline"
+              onClick={handleOpenMyProfile}
+              className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+            >
+              <User className="mr-3 h-4 w-4" />
+              My Profile
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateTripModalOpen(true)}
+              className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+            >
+              <Plus className="mr-3 h-4 w-4" />
+              Create New Trip
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsManageUsersModalOpen(true)}
+              className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
+            >
+              <Users className="mr-3 h-4 w-4" />
+              Manage Members
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-200"
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Logout
+            </Button>
+          </>
+        }
+      />
 
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-purple-50/40 relative overflow-hidden">
-          {/* Enhanced animated background elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-indigo-300/25 to-purple-300/25 rounded-full blur-3xl animate-float" />
-            <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-purple-300/25 to-pink-300/25 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[32rem] h-[32rem] bg-gradient-to-r from-indigo-200/15 to-purple-200/15 rounded-full blur-3xl animate-pulse-soft" style={{ animationDelay: '4s' }} />
-            <div className="absolute top-20 left-1/4 w-64 h-64 bg-gradient-to-br from-emerald-200/20 to-teal-200/20 rounded-full blur-2xl animate-bounce-gentle" style={{ animationDelay: '1s' }} />
-            <div className="absolute bottom-32 right-1/4 w-48 h-48 bg-gradient-to-br from-amber-200/20 to-orange-200/20 rounded-full blur-2xl animate-bounce-gentle" style={{ animationDelay: '3s' }} />
-          </div>
-          
-          <div className="relative z-10">
-            {/* Mobile Menu Overlay */}
-        {isMobileMenuOpen && (
-          <div ref={mobileMenuRef} className="md:hidden fixed top-16 sm:top-20 left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-white/20 shadow-lg z-40">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4">
-              <div className="flex flex-col space-y-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    handleOpenMyProfile()
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
-                >
-                  <User className="mr-3 h-4 w-4" />
-                  My Profile
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreateTripModalOpen(true)
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
-                >
-                  <Plus className="mr-3 h-4 w-4" />
-                  Create New Trip
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsManageUsersModalOpen(true)
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200"
-                >
-                  <Users className="mr-3 h-4 w-4" />
-                  Manage Members
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    handleLogout()
-                    setIsMobileMenuOpen(false)
-                  }}
-                  className="w-full justify-start bg-white/80 backdrop-blur-sm border border-white/20 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-200"
-                >
-                  <LogOut className="mr-3 h-4 w-4" />
-                  Logout
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-purple-50/40 relative overflow-hidden">
+        <AnimatedBackground />
+        
+        <div className="relative z-10">
 
         {/* Enhanced Main Content */}
         <main id="dashboard-main" className="max-w-7xl mx-auto py-8 sm:py-16 px-4 sm:px-6 lg:px-8" suppressHydrationWarning>
@@ -703,12 +641,6 @@ export default function DashboardPage() {
         </main>
           </div>
           
-          {/* Enhanced floating particles */}
-          <div className="absolute top-20 right-20 w-32 h-32 border border-indigo-300/40 rounded-full animate-spin shadow-lg" style={{ animationDuration: '20s' }} />
-          <div className="absolute bottom-20 left-20 w-24 h-24 border border-purple-300/40 rounded-full animate-spin shadow-lg" style={{ animationDuration: '15s', animationDirection: 'reverse' }} />
-          <div className="absolute top-1/2 left-1/2 w-16 h-16 border border-pink-300/40 rounded-full animate-spin shadow-lg" style={{ animationDuration: '25s' }} />
-          <div className="absolute top-1/3 right-1/3 w-20 h-20 border border-emerald-300/30 rounded-full animate-float shadow-md" style={{ animationDuration: '8s' }} />
-          <div className="absolute bottom-1/3 left-1/3 w-12 h-12 border border-amber-300/30 rounded-full animate-bounce-gentle shadow-md" style={{ animationDuration: '6s' }} />
         </div>
 
       {/* Modals */}

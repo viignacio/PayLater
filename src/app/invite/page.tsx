@@ -50,7 +50,7 @@ function InviteContent() {
     const data = await res.json()
 
     if (res.status === 401 && data.code === 'AUTH_REQUIRED') {
-      router.push(`/login?redirect=/invite?token=${token}`)
+      router.push(`/?sign-in=true&redirect=/invite?token=${token}`)
       return
     }
 
