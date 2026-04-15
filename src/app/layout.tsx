@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
-import { AuthProvider } from "@/contexts/AuthContext"
+import { ClerkProvider } from "@clerk/nextjs"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -31,14 +31,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <ErrorBoundary>
-          <AuthProvider>
+    <ClerkProvider>
+      <html lang="en">
+        <body className={inter.className}>
+          <ErrorBoundary>
             {children}
-          </AuthProvider>
-        </ErrorBoundary>
-      </body>
-    </html>
+          </ErrorBoundary>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }
