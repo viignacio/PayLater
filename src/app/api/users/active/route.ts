@@ -1,19 +1,23 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@clerk/nextjs/server'
+import { db } from '@/lib/db'
+import { profiles } from '@/lib/db/schema'
+import { isNull, desc } from 'drizzle-orm'
 import { toProfile } from '@/lib/transformers'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
+  try {
+    const activeProfiles = await db.query.profiles.findMany({
+      where: isNull(profiles.deletedAt),
+      orderBy: [desc(profiles.createdAt)],
+    })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({ users: (data ?? []).map(toProfile) })
+    return NextResponse.json({ users: activeProfiles.map(toProfile) })
+  } catch (error: any) {
+    console.error('Error fetching active users:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }

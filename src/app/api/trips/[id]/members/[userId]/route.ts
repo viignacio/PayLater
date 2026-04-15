@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@clerk/nextjs/server'
+import { db } from '@/lib/db'
+import { tripMembers } from '@/lib/db/schema'
+import { and, eq } from 'drizzle-orm'
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
   const { id, userId } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { userId: currentUserId } = await auth()
+  
+  if (!currentUserId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { error } = await supabase
-    .from('trip_members')
-    .delete()
-    .eq('trip_id', id)
-    .eq('user_id', userId)
+  try {
+    await db.delete(tripMembers)
+      .where(and(
+        eq(tripMembers.tripId, id as any),
+        eq(tripMembers.userId, userId)
+      ))
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({ message: 'Member removed from trip' })
+    return NextResponse.json({ message: 'Member removed from trip' })
+  } catch (error: any) {
+    console.error('Error removing trip member:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }

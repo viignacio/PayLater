@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
-import { ClerkProvider } from "@clerk/nextjs"
+import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -35,7 +35,22 @@ export default function RootLayout({
       <html lang="en">
         <body className={inter.className}>
           <ErrorBoundary>
-            {children}
+            <header className="flex justify-end p-4 gap-4 bg-white/50 backdrop-blur-md border-b">
+              <Show when="signed-out">
+                <SignInButton mode="modal">
+                  <button className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">Sign In</button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button className="text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">Sign Up</button>
+                </SignUpButton>
+              </Show>
+              <Show when="signed-in">
+                <UserButton afterSignOutUrl="/" />
+              </Show>
+            </header>
+            <main>
+              {children}
+            </main>
           </ErrorBoundary>
         </body>
       </html>
