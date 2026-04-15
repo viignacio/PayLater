@@ -16,8 +16,9 @@ export async function GET() {
     })
 
     return NextResponse.json({ users: activeProfiles.map(toProfile) })
-  } catch (error: any) {
-    console.error('Error fetching active users:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error fetching active users:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

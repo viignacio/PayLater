@@ -16,13 +16,14 @@ export async function DELETE(
   try {
     await db.delete(tripMembers)
       .where(and(
-        eq(tripMembers.tripId, id as any),
+        eq(tripMembers.tripId, id),
         eq(tripMembers.userId, userId)
       ))
 
     return NextResponse.json({ message: 'Member removed from trip' })
-  } catch (error: any) {
-    console.error('Error removing trip member:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error removing trip member:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

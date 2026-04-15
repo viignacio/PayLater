@@ -99,8 +99,9 @@ export async function POST(request: NextRequest) {
       expense: toExpense(fullExpense), 
       message: 'Expense created successfully' 
     })
-  } catch (error: any) {
-    console.error('Expense creation error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    const err = error as Error;
+    console.error('Expense creation error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

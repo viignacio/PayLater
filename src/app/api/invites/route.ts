@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { tripInvites } from '@/lib/db/schema'
 import { toTripInvite } from '@/lib/transformers'
 import { randomBytes } from 'crypto'
-import { desc, eq, and } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 
 export async function POST(request: NextRequest) {
   const userId = await syncUser()
@@ -40,11 +40,12 @@ export async function POST(request: NextRequest) {
       inviteUrl,
       message: 'Invite created. Share this link with the invitee.',
     })
-  } catch (error: any) {
-    if (error.code === '23505') {
+  } catch (error) {
+    const err = error as any;
+    if (err.code === '23505') {
       return NextResponse.json({ error: 'This email has already been invited to this trip' }, { status: 400 })
     }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
 

@@ -18,7 +18,7 @@ export async function POST(
 
   try {
     const [newMember] = await db.insert(tripMembers).values({
-      tripId: id as any,
+      tripId: id,
       userId: userId,
       role: 'MEMBER'
     }).returning()
@@ -31,11 +31,12 @@ export async function POST(
     })
 
     return NextResponse.json({ message: 'User added to trip successfully', member: toTripMember(memberWithProfile) })
-  } catch (error: any) {
-    if (error.code === '23505') {
+  } catch (error) {
+    const err = error as any;
+    if (err.code === '23505') {
       return NextResponse.json({ error: 'User is already a member of this trip' }, { status: 400 })
     }
-    console.error('Error adding trip member:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('Error adding trip member:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

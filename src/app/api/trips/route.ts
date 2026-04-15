@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth, syncUser } from '@/lib/auth'
+import { syncUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { trips, tripMembers } from '@/lib/db/schema'
 import { toTrip } from '@/lib/transformers'

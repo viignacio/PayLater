@@ -105,9 +105,10 @@ export async function PUT(
       expense: toExpense(fullExpense), 
       message: 'Expense updated successfully' 
     })
-  } catch (error: any) {
-    console.error('Expense update error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    const err = error as Error;
+    console.error('Expense update error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
 

@@ -49,10 +49,11 @@ export async function POST(
       userId: userId,
       role: invite.role,
     })
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as any;
     // Ignore duplicate member errors (code 23505)
-    if (error.code !== '23505') {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (err.code !== '23505') {
+      return NextResponse.json({ error: err.message }, { status: 500 })
     }
   }
 
