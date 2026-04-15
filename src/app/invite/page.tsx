@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useUser } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Users } from 'lucide-react'
 
@@ -16,7 +16,8 @@ interface InviteInfo {
 function InviteContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoaded } = useUser()
+  const authLoading = !isLoaded
   const token = searchParams.get('token')
 
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null)

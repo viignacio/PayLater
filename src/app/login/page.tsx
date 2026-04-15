@@ -1,10 +1,9 @@
-import { Suspense } from 'react'
-import { LoginPage } from '@/components/auth/LoginPage'
+import { SignIn } from '@clerk/nextjs'
 
 export default function Page() {
   return (
-    <Suspense>
-      <LoginPage />
-    </Suspense>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <SignIn routing="hash" />
+    </div>
   )
 }

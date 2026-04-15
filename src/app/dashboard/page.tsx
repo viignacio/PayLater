@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Loading } from "@/components/ui/loading"
-import { useAuth } from "@/contexts/AuthContext"
+import { useUser, useClerk } from "@clerk/nextjs"
 import dynamic from "next/dynamic"
 import { useClickOutside } from "@/hooks/use-click-outside"
 
@@ -52,7 +52,8 @@ interface ApiUser {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { signOut, profile } = useAuth()
+  const { signOut } = useClerk()
+  const { user } = useUser()
   const [trips, setTrips] = useState<Trip[]>([]) // Will be populated from API later
   const [users, setUsers] = useState<User[]>([]) // Global users list
   const [isLoading, setIsLoading] = useState(true) // Loading state for initial data fetch
@@ -183,15 +184,14 @@ export default function DashboardPage() {
   }
 
   const handleOpenMyProfile = () => {
-    if (!profile) return
-    const me = users.find(u => u.id === profile.id) ?? {
-      id: profile.id,
-      name: profile.name,
-      avatar: profile.avatar ?? undefined,
-      qrCode: profile.qrCode ?? undefined,
+    if (!user) return
+    const me = users.find(u => u.id === user.id) ?? {
+      id: user.id,
+      name: user.fullName || "Me",
+      avatar: user.imageUrl,
       totalOwed: 0,
       totalOwing: 0,
-      createdAt: profile.createdAt,
+      createdAt: new Date().toISOString(),
     }
     setSelectedUser(me)
     setIsUserProfileModalOpen(true)
